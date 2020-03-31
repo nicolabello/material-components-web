@@ -6,13 +6,13 @@ All the internal imports have been transformed to relative to make importing the
 
 ## Installation
 
-```
+```bash
 npm install @nicolabello/material-components-web
 ```
 
 or
 
-```
+```bash
 yarn add @nicolabello/material-components-web
 ```
 
