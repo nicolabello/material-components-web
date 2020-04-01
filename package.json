@@ -1,5 +1,5 @@
 {
-  "version": "5.1.0",
+  "version": "5.1.101",
   "name": "@nicolabello/material-components-web",
   "description": "Modular and customizable Material Design UI components for the web",
   "author": "Nicola Bello <nicola.bello.3@gmail.com>",
@@ -12,9 +12,13 @@
     "material design"
   ],
   "license": "MIT",
-  "main": "build/index.scss",
+  "files": ["components/**", "main/**", "index.scss"],
+  "main": "bild/dist/material-components-web.js",
+  "module": "main/index.js",
+  "sideEffects": false,
+  "types": "main/dist/material-components-web.d.ts",
   "scripts": {
-    "build": "rimraf ./build && node build"
+    "build": "node build"
   },
   "devDependencies": {
     "fs-extra": "^9.0.0",
