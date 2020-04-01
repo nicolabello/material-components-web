@@ -28,9 +28,15 @@ for (let i = 0; i < 10; i++) {
     const extensions = '{scss,js}';
 
     replace.sync({
-        files: [`${componentsFolder}${foldersPath}/*.${extensions}`, `${mainFolder}${foldersPath}/*.${extensions}`],
+        files: `${componentsFolder}${foldersPath}/*.${extensions}`,
         from: /("|')@material\//g,
         to: `$1.${relativePath}/`
+    });
+
+    replace.sync({
+        files: `${mainFolder}${foldersPath}/*.${extensions}`,
+        from: /("|')@material\//g,
+        to: `$1.${relativePath}/../${componentsFolder}/`
     });
 
 }
