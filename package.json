@@ -1,5 +1,5 @@
 {
-  "version": "5.1.107",
+  "version": "5.1.109",
   "name": "@nicolabello/material-components-web",
   "description": "Modular and customizable Material Design UI components for the web",
   "author": "Nicola Bello <nicola.bello.3@gmail.com>",
@@ -16,7 +16,7 @@
   "types": "index.d.ts",
   "scripts": {
     "update": "node update",
-    "build": "rimraf ./build && tsc && cp -R src/styles/* build && cp package.json build && cp README.md build"
+    "build": "rimraf ./build && tsc && node build"
   },
   "devDependencies": {
     "download": "^8.0.0",

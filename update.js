@@ -12,6 +12,7 @@ async function downloadAndExtract(url, to) {
 
 function copyFiles(from, to, pattern = '/**/*') {
     glob.sync(`${from}${pattern}`)
+        .filter(file => fs.statSync(file).isFile())
         .filter(file => file.indexOf('/test/') < 0)
         .map(file => ({
             from: file,
@@ -80,7 +81,11 @@ function buildScripts(repoPath, mainFolder) {
     replaceImports(mainFolder);
 
     // Create index
-    fs.writeFileSync(`${mainFolder}/index.ts`, `export * from './material-components-web';\n`);
+    fs.writeFileSync(`${mainFolder}/index.ts`, glob.sync(`${mainFolder}/**/component.ts`)
+        .map(file => {
+            return `export * from '.${file.replace(mainFolder, '').replace('.ts', '')}';`
+        })
+        .join('\n'));
 
 }
 
