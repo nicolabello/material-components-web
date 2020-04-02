@@ -39,18 +39,12 @@ The `~` at the start of the path tells the Webpack loader to resolve the import 
 ### Including the Javascript
 
 ```js
-import * as mdc from '@nicolabello/material-components-web';
-const checkbox = new mdc.checkbox.MDCCheckbox(document.querySelector('.mdc-checkbox'));
-// OR
-import {checkbox} from '@nicolabello/material-components-web';
-const checkbox = new checkbox.MDCCheckbox(document.querySelector('.mdc-checkbox'));
-// OR
-import { MDCCheckbox } from '@nicolabello/material-components-web/checkbox';
+import { MDCCheckbox } from '@nicolabello/material-components-web';
 const checkbox = new MDCCheckbox(document.querySelector('.mdc-checkbox'));
 ```
 
 ## Documentation
 
-For more documentation please refer to the [original repo readme](https://github.com/material-components/material-components-web#readme) and to the [official documentation](https://material.io/develop/web).
+For more documentation please refer to the original repo's [readme](https://github.com/material-components/material-components-web#readme).
 
-Please note that all the imports in the format `@material/` must be replaced with `~@nicolabello/material-components-web/components/`.
+Please note that all the imports in the format `@material` must be replaced with `~@nicolabello/material-components-web`.
