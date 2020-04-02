@@ -25,16 +25,29 @@ yarn add @nicolabello/material-components-web
 @use "~@nicolabello/material-components-web/styles";
 
 // Variables
-@use "~@nicolabello/material-components-web/styles/variables";
+@use "~@nicolabello/material-components-web/variables";
 
 // Mixins
-@use "~@nicolabello/material-components-web/styles/mixins";
+@use "~@nicolabello/material-components-web/mixins";
 
 // Functions
-@use "~@nicolabello/material-components-web/styles/functions";
+@use "~@nicolabello/material-components-web/functions";
 ```
 
 The `~` at the start of the path tells the Webpack loader to resolve the import from the `node_modules` path.
+
+### Including the Javascript
+
+```js
+import * as mdc from '@nicolabello/material-components-web';
+const checkbox = new mdc.checkbox.MDCCheckbox(document.querySelector('.mdc-checkbox'));
+// OR
+import {checkbox} from '@nicolabello/material-components-web';
+const checkbox = new checkbox.MDCCheckbox(document.querySelector('.mdc-checkbox'));
+// OR
+import { MDCCheckbox } from '@nicolabello/material-components-web/checkbox';
+const checkbox = new MDCCheckbox(document.querySelector('.mdc-checkbox'));
+```
 
 ## Documentation
 
