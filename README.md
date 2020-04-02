@@ -21,17 +21,17 @@ yarn add @nicolabello/material-components-web
 ### Including the Sass
 
 ```scss
-// Variables
-@use "~@nicolabello/material-components-web/variables";
-
-// Mixins
-@use "~@nicolabello/material-components-web/mixins";
-
-// Functions
-@use "~@nicolabello/material-components-web/functions";
-
 // Styles
 @use "~@nicolabello/material-components-web/styles";
+
+// Variables
+@use "~@nicolabello/material-components-web/styles/variables";
+
+// Mixins
+@use "~@nicolabello/material-components-web/styles/mixins";
+
+// Functions
+@use "~@nicolabello/material-components-web/styles/functions";
 ```
 
 The `~` at the start of the path tells the Webpack loader to resolve the import from the `node_modules` path.

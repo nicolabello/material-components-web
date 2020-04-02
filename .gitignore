@@ -13,5 +13,5 @@ node_modules
 .idea
 
 # Build output
-styles
-scripts
+temp
+build
