@@ -71,6 +71,7 @@
     "build.js",
     "update.js",
     "temp/**",
+    "build/**",
     "*.config.*",
     "**/*.test.*",
     "**/*.spec.*"

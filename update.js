@@ -63,7 +63,7 @@ function buildStyles(repoPath, mainFolder) {
             .join('\n'));
     }
 
-    createImports(mainFolder, 'styles.scss', '/**/mdc-*.scss');
+    createImports(mainFolder, 'styles.scss', '/*/mdc-*.scss');
     createImports(mainFolder, 'variables.scss', '/**/_variables.scss');
     createImports(mainFolder, 'mixins.scss', '/**/_mixins.scss');
     createImports(mainFolder, 'functions.scss', '/**/_functions.scss');
