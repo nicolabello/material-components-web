@@ -45,7 +45,7 @@ function replaceImports(mainFolder) {
     }
 }
 
-function buildStyles(repoPath, mainFolder) {
+function updateStyles(repoPath, mainFolder) {
 
     rimraf.sync(mainFolder);
 
@@ -55,36 +55,35 @@ function buildStyles(repoPath, mainFolder) {
     // Replace imports with relative paths
     replaceImports(mainFolder);
 
-    // Create import files
-    function createImports(baseDir, fileName, pattern) {
-        fs.writeFileSync(`${baseDir}/${fileName}`, glob.sync(`${baseDir}${pattern}`)
-            .filter(file => file.indexOf('.import.') < 0)
-            .map(file => `@use "${file.replace(mainFolder, '.')}";`)
-            .join('\n'));
-    }
+    // Create styles.scss
+    fs.writeFileSync(`${mainFolder}/styles.scss`, glob.sync(`${mainFolder}/*/mdc-*.scss`)
+        .filter(file => file.indexOf('.import.') < 0)
+        .map(file => file.replace(mainFolder, '.').replace('.scss', ''))
+        .map(file => `@use "${file}";`)
+        .join('\n'));
 
-    createImports(mainFolder, 'styles.scss', '/*/mdc-*.scss');
-    createImports(mainFolder, 'variables.scss', '/**/_variables.scss');
-    createImports(mainFolder, 'mixins.scss', '/**/_mixins.scss');
-    createImports(mainFolder, 'functions.scss', '/**/_functions.scss');
+    // Create _members.scss
+    fs.writeFileSync(`${mainFolder}/_members.scss`, glob.sync(`${mainFolder}/*/_index.scss`)
+        .filter(file => file.indexOf('.import.') < 0)
+        .map(file => file.replace(mainFolder, '.').replace('/_index.scss', ''))
+        .map(file => `@forward "${file}" as ${path.basename(file)}-*;`)
+        .join('\n'));
 
 }
 
-function buildScripts(repoPath, mainFolder) {
+function updateScripts(repoPath, mainFolder) {
 
     rimraf.sync(mainFolder);
 
-    // Copy all scss files
+    // Copy all js files
     copyFiles(`${repoPath}/material-components-web-master/packages`, mainFolder, '/**/*.ts');
 
     // Replace imports with relative paths
     replaceImports(mainFolder);
 
-    // Create index
+    // Create index.ts
     fs.writeFileSync(`${mainFolder}/index.ts`, glob.sync(`${mainFolder}/**/component.ts`)
-        .map(file => {
-            return `export * from '.${file.replace(mainFolder, '').replace('.ts', '')}';`
-        })
+        .map(file => `export * from '${file.replace(mainFolder, '.').replace('.ts', '')}';`)
         .join('\n'));
 
 }
@@ -93,7 +92,7 @@ function buildScripts(repoPath, mainFolder) {
 
     const repoPath = 'temp/material-components-web';
     await downloadAndExtract('https://github.com/material-components/material-components-web/archive/master.zip', repoPath);
-    buildStyles(repoPath, 'src/styles');
-    buildScripts(repoPath, 'src/scripts');
+    updateStyles(repoPath, 'src/styles');
+    updateScripts(repoPath, 'src/scripts');
 
 })();
