@@ -36,8 +36,14 @@ type MoveEventMap = {
   readonly[K in DownEventType]: MoveEventType;
 };
 
-const DOWN_EVENTS: DownEventType[] = ['mousedown', 'pointerdown', 'touchstart'];
-const UP_EVENTS: UpEventType[] = ['mouseup', 'pointerup', 'touchend'];
+// Accessing `window` without a `typeof` check will throw on Node environments.
+const hasWindow = typeof window !== 'undefined';
+const hasPointerEventSupport = hasWindow && !!window.PointerEvent;
+
+const DOWN_EVENTS: DownEventType[] =
+    hasPointerEventSupport ? ['pointerdown'] : ['mousedown', 'touchstart'];
+const UP_EVENTS: UpEventType[] =
+    hasPointerEventSupport ? ['pointerup'] : ['mouseup', 'touchend'];
 
 const MOVE_EVENT_MAP: MoveEventMap = {
   mousedown: 'mousemove',
@@ -153,6 +159,16 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
       this.adapter_.registerThumbContainerInteractionHandler(
           evtName, this.thumbContainerPointerHandler_);
     });
+
+    if (hasPointerEventSupport) {
+      /*
+       * When pointermove happens, if too much sliding happens, the browser
+       * believes you are panning in the x direction and stops firing
+       * pointermove events and supplies its own gestures. (similar to
+       * preventing default on touchmove)
+       */
+      this.adapter_.addClass(cssClasses.DISABLE_TOUCH_ACTION);
+    }
 
     this.adapter_.registerInteractionHandler('keydown', this.keydownHandler_);
     this.adapter_.registerInteractionHandler('focus', this.focusHandler_);
@@ -496,9 +512,9 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
       translatePx = this.rect_.width - translatePx;
     }
 
-    const transformProp = getCorrectPropertyName(window, 'transform');
+    const transformProp = hasWindow ? getCorrectPropertyName(window, 'transform') : 'transform';
     const transitionendEvtName =
-        getCorrectEventName(window, 'transitionend') as EventType;
+        hasWindow ? getCorrectEventName(window, 'transitionend') as EventType : 'transitionend';
 
     if (this.inTransit_) {
       const onTransitionEnd = () => {

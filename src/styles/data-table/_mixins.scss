@@ -103,8 +103,9 @@
 
     @include feature-targeting-mixins.targets($feat-structure) {
       box-sizing: border-box;
-      text-overflow: ellipsis;
       overflow: hidden;
+      text-align: left;
+      text-overflow: ellipsis;
     }
   }
 
@@ -191,8 +192,9 @@
 
   .mdc-data-table__header-cell-wrapper {
     @include feature-targeting-mixins.targets($feat-structure) {
-      display: inline-flex;
       align-items: center;
+      display: inline-flex;
+      vertical-align: middle;
     }
   }
 
@@ -227,6 +229,40 @@
       position: absolute;
       top: 0;
       width: 100%;
+    }
+  }
+
+  .mdc-data-table__pagination {
+    @include typography-mixins.typography(body2, $query: $query);
+
+    @include feature-targeting-mixins.targets($feat-structure) {
+      box-sizing: border-box;
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+
+  .mdc-data-table__pagination-trailing {
+    @include feature-targeting-mixins.targets($feat-structure) {
+      @include rtl-mixins.reflexive-box(margin, left, 4px);
+
+      align-items: center;
+      display: flex;
+    }
+  }
+
+  .mdc-data-table__pagination-button {
+    @include icon-button-mixins.flip-icon-in-rtl($query: $query);
+    @include feature-targeting-mixins.targets($feat-structure) {
+      @include rtl-mixins.reflexive-box(margin, right, 4px);
+    }
+  }
+
+  .mdc-data-table__pagination-total {
+    @include feature-targeting-mixins.targets($feat-structure) {
+      @include rtl-mixins.reflexive-box(margin, right, 36px);
+
+      white-space: nowrap;
     }
   }
 }
@@ -301,7 +337,8 @@
 @mixin divider-color($color, $query: feature-targeting-functions.all()) {
   $feat-color: feature-targeting-functions.create-target($query, color);
 
-  .mdc-data-table__row {
+  .mdc-data-table__row,
+  .mdc-data-table__pagination {
     @include feature-targeting-mixins.targets($feat-color) {
       border-top-color: $color;
     }
@@ -311,7 +348,8 @@
 @mixin divider-size($size, $query: feature-targeting-functions.all()) {
   $feat-structure: feature-targeting-functions.create-target($query, structure);
 
-  .mdc-data-table__row {
+  .mdc-data-table__row,
+  .mdc-data-table__pagination {
     @include feature-targeting-mixins.targets($feat-structure) {
       border-top-width: $size;
       border-top-style: solid;
@@ -378,19 +416,13 @@
       height: $height;
     }
   }
-
-  .mdc-data-table__progress-indicator {
-    @include feature-targeting-mixins.targets($feat-structure) {
-      height: calc(100% - #{$height});
-      top: $height;
-    }
-  }
 }
 
 @mixin cell-height($height, $query: feature-targeting-functions.all()) {
   $feat-structure: feature-targeting-functions.create-target($query, structure);
 
-  .mdc-data-table__cell {
+  .mdc-data-table__cell,
+  .mdc-data-table__pagination {
     @include feature-targeting-mixins.targets($feat-structure) {
       height: $height;
     }
