@@ -58,7 +58,7 @@ export class MDCSelectHelperTextFoundation extends MDCFoundation<MDCSelectHelper
    * Sets the content of the helper text field.
    */
   setContent(content: string) {
-    this.adapter_.setContent(content);
+    this.adapter.setContent(content);
   }
 
   /**
@@ -71,9 +71,9 @@ export class MDCSelectHelperTextFoundation extends MDCFoundation<MDCSelectHelper
    */
   setValidation(isValidation: boolean) {
     if (isValidation) {
-      this.adapter_.addClass(cssClasses.HELPER_TEXT_VALIDATION_MSG);
+      this.adapter.addClass(cssClasses.HELPER_TEXT_VALIDATION_MSG);
     } else {
-      this.adapter_.removeClass(cssClasses.HELPER_TEXT_VALIDATION_MSG);
+      this.adapter.removeClass(cssClasses.HELPER_TEXT_VALIDATION_MSG);
     }
   }
 
@@ -84,9 +84,9 @@ export class MDCSelectHelperTextFoundation extends MDCFoundation<MDCSelectHelper
    */
   setValidationMsgPersistent(isPersistent: boolean) {
     if (isPersistent) {
-      this.adapter_.addClass(cssClasses.HELPER_TEXT_VALIDATION_MSG_PERSISTENT);
+      this.adapter.addClass(cssClasses.HELPER_TEXT_VALIDATION_MSG_PERSISTENT);
     } else {
-      this.adapter_.removeClass(
+      this.adapter.removeClass(
           cssClasses.HELPER_TEXT_VALIDATION_MSG_PERSISTENT);
     }
   }
@@ -95,36 +95,52 @@ export class MDCSelectHelperTextFoundation extends MDCFoundation<MDCSelectHelper
    * Makes the helper text visible to screen readers.
    */
   showToScreenReader() {
-    this.adapter_.removeAttr(strings.ARIA_HIDDEN);
+    this.adapter.removeAttr(strings.ARIA_HIDDEN);
   }
 
   /**
-   * Sets the validity of the helper text based on the select validity.
+   * When acting as a validation message, shows/hides the helper text and
+   * triggers alerts as necessary based on the select's validity.
    */
   setValidity(selectIsValid: boolean) {
-    const helperTextIsPersistentValidationMsg = this.adapter_.hasClass(
-        cssClasses.HELPER_TEXT_VALIDATION_MSG_PERSISTENT);
-    const helperTextIsValidationMsg =
-        this.adapter_.hasClass(cssClasses.HELPER_TEXT_VALIDATION_MSG);
-    const validationMsgNeedsDisplay =
-        helperTextIsValidationMsg && !selectIsValid;
+    const isValidationMsg =
+        this.adapter.hasClass(cssClasses.HELPER_TEXT_VALIDATION_MSG);
 
-    if (validationMsgNeedsDisplay) {
-      this.adapter_.setAttr(strings.ROLE, 'alert');
-    } else {
-      this.adapter_.removeAttr(strings.ROLE);
+    if (!isValidationMsg) {
+      // Non-validating helper-text is always displayed and does not participate
+      // in validation logic.
+      return;
     }
 
-    if (!validationMsgNeedsDisplay && !helperTextIsPersistentValidationMsg) {
-      this.hide_();
+    const isPersistentValidationMsg =
+        this.adapter.hasClass(cssClasses.HELPER_TEXT_VALIDATION_MSG_PERSISTENT);
+
+    // Validating helper text is displayed if select is invalid, unless it is
+    // set as persistent, in which case it always displays.
+    const msgShouldDisplay = !selectIsValid || isPersistentValidationMsg;
+    if (msgShouldDisplay) {
+      this.showToScreenReader();
+
+      // In addition to displaying, also trigger an alert if the select
+      // has become invalid.
+      if (!selectIsValid) {
+        this.adapter.setAttr(strings.ROLE, 'alert');
+      } else {
+        this.adapter.removeAttr(strings.ROLE);
+      }
+      return;
     }
+
+    // Hide everything.
+    this.adapter.removeAttr(strings.ROLE);
+    this.hide();
   }
 
   /**
    * Hides the help text from screen readers.
    */
-  private hide_() {
-    this.adapter_.setAttr(strings.ARIA_HIDDEN, 'true');
+  private hide() {
+    this.adapter.setAttr(strings.ARIA_HIDDEN, 'true');
   }
 }
 
