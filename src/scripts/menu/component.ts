@@ -21,12 +21,16 @@
  * THE SOFTWARE.
  */
 
+// TODO(b/152410470): Remove trailing underscores from private properties
+// tslint:disable:strip-private-property-underscore
+
 import {MDCComponent} from './../base/component';
 import {CustomEventListener, SpecificEventListener} from './../base/types';
 import {closest} from './../dom/ponyfill';
 import {MDCList, MDCListFactory} from './../list/component';
+import {numbers as listConstants} from './../list/constants';
 import {MDCListFoundation} from './../list/foundation';
-import {MDCListActionEvent} from './../list/types';
+import {MDCListActionEvent, MDCListIndex} from './../list/types';
 import {MDCMenuSurface, MDCMenuSurfaceFactory} from './../menu-surface/component';
 import {Corner} from './../menu-surface/constants';
 import {MDCMenuSurfaceFoundation} from './../menu-surface/foundation';
@@ -127,6 +131,33 @@ export class MDCMenu extends MDCComponent<MDCMenuFoundation> {
   }
 
   /**
+   * @return Whether typeahead logic is currently matching some user prefix.
+   */
+  get typeaheadInProgress() {
+    return this.list_ ? this.list_.typeaheadInProgress : false;
+  }
+
+  /**
+   * Given the next desired character from the user, adds it to the typeahead
+   * buffer. Then, attempts to find the next option matching the buffer. Wraps
+   * around if at the end of options.
+   *
+   * @param nextChar The next character to add to the prefix buffer.
+   * @param startingIndex The index from which to start matching. Only relevant
+   *     when starting a new match sequence. To start a new match sequence,
+   *     clear the buffer using `clearTypeaheadBuffer`, or wait for the buffer
+   *     to clear after a set interval defined in list foundation. Defaults to
+   *     the currently focused index.
+   * @return The index of the matched item, or -1 if no match.
+   */
+  typeaheadMatchItem(nextChar: string, startingIndex?: number): number {
+    if (this.list_) {
+      return this.list_.typeaheadMatchItem(nextChar, startingIndex);
+    }
+    return -1;
+  }
+
+  /**
    * Layout the underlying list element in the case of any dynamic updates
    * to its structure.
    */
@@ -143,6 +174,38 @@ export class MDCMenu extends MDCComponent<MDCMenuFoundation> {
    */
   get items(): Element[] {
     return this.list_ ? this.list_.listElements : [];
+  }
+
+  /**
+   * Turns on/off the underlying list's single selection mode. Used mainly
+   * by select menu.
+   *
+   * @param singleSelection Whether to enable single selection mode.
+   */
+  set singleSelection(singleSelection: boolean) {
+    if (this.list_) {
+      this.list_.singleSelection = singleSelection;
+    }
+  }
+
+  /**
+   * Retrieves the selected index. Only applicable to select menus.
+   * @return The selected index, which is a number for single selection and
+   *     radio lists, and an array of numbers for checkbox lists.
+   */
+  get selectedIndex(): MDCListIndex {
+    return this.list_ ? this.list_.selectedIndex : listConstants.UNSET_INDEX;
+  }
+
+  /**
+   * Sets the selected index of the list. Only applicable to select menus.
+   * @param index The selected index, which is a number for single selection and
+   *     radio lists, and an array of numbers for checkbox lists.
+   */
+  set selectedIndex(index: MDCListIndex) {
+    if (this.list_) {
+      this.list_.selectedIndex = index;
+    }
   }
 
   set quickOpen(quickOpen: boolean) {
@@ -198,6 +261,18 @@ export class MDCMenu extends MDCComponent<MDCMenuFoundation> {
     } else {
       return null;
     }
+  }
+
+  /**
+   * @param index A menu item's index.
+   * @return The primary text within the menu at the index specified.
+   */
+  getPrimaryTextAtIndex(index: number): string {
+    const item = this.getOptionByIndex(index);
+    if (item && this.list_) {
+      return this.list_.getPrimaryText(item) || '';
+    }
+    return '';
   }
 
   setFixedPosition(isFixed: boolean) {

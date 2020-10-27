@@ -1,5 +1,5 @@
 {
-  "version": "6.0.11",
+  "version": "7.0.10",
   "name": "@nicolabello/material-components-web",
   "description": "Modular and customizable Material Design UI components for the web",
   "author": "Nicola Bello <nicola.bello.3@gmail.com>",
@@ -16,7 +16,8 @@
   "types": "index.d.ts",
   "scripts": {
     "update": "node update",
-    "build": "rimraf ./build && tsc && node build"
+    "_build": "rimraf ./build && tsc && node build",
+    "build": "rimraf ./build && tsc-silent --project tsconfig.json --suppress @/src/ @/node_modules/ --stats && node build"
   },
   "devDependencies": {
     "download": "^8.0.0",
@@ -25,5 +26,8 @@
     "rimraf": "^3.0.2",
     "sass": "^1.26.3",
     "typescript": "~3.8.3"
+  },
+  "dependencies": {
+    "tsc-silent": "^1.2.1"
   }
 }

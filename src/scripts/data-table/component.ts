@@ -25,8 +25,10 @@ import {MDCComponent} from './../base/component';
 import {SpecificEventListener} from './../base/types';
 import {MDCCheckbox, MDCCheckboxFactory} from './../checkbox/component';
 import {closest} from './../dom/ponyfill';
+import {MDCLinearProgress} from './../linear-progress/component';
+
 import {MDCDataTableAdapter} from './adapter';
-import {cssClasses, events, strings} from './constants';
+import {cssClasses, dataAttributes, events, messages, selectors, SortValue} from './constants';
 import {MDCDataTableFoundation} from './foundation';
 import {MDCDataTableRowSelectionChangedEventDetail} from './types';
 
@@ -41,10 +43,13 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
   private headerRowCheckbox!: MDCCheckbox;
   private rowCheckboxList!: MDCCheckbox[];
   private checkboxFactory!: MDCCheckboxFactory;
+  private linearProgress!: MDCLinearProgress;
   private headerRow!: HTMLElement;
   private content!: HTMLElement;
   private handleHeaderRowCheckboxChange!: SpecificEventListener<'change'>;
   private handleRowCheckboxChange!: SpecificEventListener<'change'>;
+  private headerRowClickListener!:
+      SpecificEventListener<'click'>;  // Assigned in `initialSyncWithDOM()`
 
   initialize(checkboxFactory: MDCCheckboxFactory = (el: Element) => new MDCCheckbox(el)) {
     this.checkboxFactory = checkboxFactory;
@@ -53,15 +58,23 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
   initialSyncWithDOM() {
     this.headerRow =
         this.root.querySelector(`.${cssClasses.HEADER_ROW}`) as HTMLElement;
-    this.handleHeaderRowCheckboxChange = () =>
-        this.foundation.handleHeaderRowCheckboxChange();
+    this.handleHeaderRowCheckboxChange = () => {
+      this.foundation.handleHeaderRowCheckboxChange();
+    };
     this.headerRow.addEventListener(
         'change', this.handleHeaderRowCheckboxChange);
 
+    this.headerRowClickListener = (event) => {
+      this.handleHeaderRowClick(event);
+    };
+    this.headerRow.addEventListener('click', this.headerRowClickListener);
+
+
     this.content =
         this.root.querySelector(`.${cssClasses.CONTENT}`) as HTMLElement;
-    this.handleRowCheckboxChange = (event) =>
-        this.foundation.handleRowCheckboxChange(event);
+    this.handleRowCheckboxChange = (event) => {
+      this.foundation.handleRowCheckboxChange(event);
+    };
     this.content.addEventListener('change', this.handleRowCheckboxChange);
 
     this.layout();
@@ -72,6 +85,13 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
    */
   layout() {
     this.foundation.layout();
+  }
+
+  /**
+   * @return Returns array of header row cell elements.
+   */
+  getHeaderCells(): Element[] {
+    return [].slice.call(this.root.querySelectorAll(selectors.HEADER_CELL));
   }
 
   /**
@@ -96,40 +116,124 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
     this.foundation.setSelectedRowIds(rowIds);
   }
 
-  destroy() {
-    this.headerRow.removeEventListener(
-        'change', this.handleHeaderRowCheckboxChange);
-    this.content.removeEventListener('change', this.handleRowCheckboxChange);
+  /**
+   * Shows progress indicator when data table is in loading state.
+   */
+  showProgress() {
+    this.getLinearProgress().open();
+    this.foundation.showProgress();
+  }
 
-    this.headerRowCheckbox.destroy();
-    this.rowCheckboxList.forEach((checkbox) => {
-      checkbox.destroy();
-    });
+  /**
+   * Hides progress indicator after data table is finished loading.
+   */
+  hideProgress() {
+    this.foundation.hideProgress();
+    this.getLinearProgress().close();
+  }
+
+  destroy() {
+    if (this.handleHeaderRowCheckboxChange) {
+      this.headerRow.removeEventListener(
+          'change', this.handleHeaderRowCheckboxChange);
+    }
+    if (this.headerRowClickListener) {
+      this.headerRow.removeEventListener('click', this.headerRowClickListener);
+    }
+    if (this.handleRowCheckboxChange) {
+      this.content.removeEventListener('change', this.handleRowCheckboxChange);
+    }
+
+    if (this.headerRowCheckbox) {
+      this.headerRowCheckbox.destroy();
+    }
+    if (this.rowCheckboxList) {
+      for (const checkbox of this.rowCheckboxList) {
+        checkbox.destroy();
+      }
+    }
   }
 
   getDefaultFoundation() {
     // DO NOT INLINE this variable. For backward compatibility, foundations take a Partial<MDCFooAdapter>.
     // To ensure we don't accidentally omit any methods, we need a separate, strongly typed adapter variable.
     // tslint:disable:object-literal-sort-keys Methods should be in the same order as the adapter interface.
-    const adapter: Partial<MDCDataTableAdapter> = {
+    const adapter: MDCDataTableAdapter = {
+      addClass: (className) => {
+        this.root.classList.add(className);
+      },
+      removeClass: (className) => {
+        this.root.classList.remove(className);
+      },
+      getHeaderCellElements: () => this.getHeaderCells(),
+      getHeaderCellCount: () => this.getHeaderCells().length,
+      getAttributeByHeaderCellIndex: (index, attribute) => {
+        return this.getHeaderCells()[index].getAttribute(attribute);
+      },
+      setAttributeByHeaderCellIndex: (index, attribute, value) => {
+        this.getHeaderCells()[index].setAttribute(attribute, value);
+      },
+      setClassNameByHeaderCellIndex: (index, className) => {
+        this.getHeaderCells()[index].classList.add(className);
+      },
+      removeClassNameByHeaderCellIndex: (index, className) => {
+        this.getHeaderCells()[index].classList.remove(className);
+      },
+      notifySortAction: (data) => {
+        this.emit(events.SORTED, data, /** shouldBubble */ true);
+      },
+      getTableContainerHeight: () => {
+        const tableContainer = this.root.querySelector<HTMLElement>(
+            `.${cssClasses.TABLE_CONTAINER}`);
+
+        if (!tableContainer) {
+          throw new Error('MDCDataTable: Table container element not found.');
+        }
+
+        return tableContainer.getBoundingClientRect().height;
+      },
+      getTableHeaderHeight: () => {
+        const tableHeader =
+            this.root.querySelector<HTMLElement>(selectors.HEADER_ROW);
+
+        if (!tableHeader) {
+          throw new Error('MDCDataTable: Table header element not found.');
+        }
+
+        return tableHeader.getBoundingClientRect().height;
+      },
+      setProgressIndicatorStyles: (styles) => {
+        const progressIndicator =
+            this.root.querySelector<HTMLElement>(selectors.PROGRESS_INDICATOR);
+
+        if (!progressIndicator) {
+          throw new Error(
+              'MDCDataTable: Progress indicator element not found.');
+        }
+
+        progressIndicator.style.setProperty('height', styles.height);
+        progressIndicator.style.setProperty('top', styles.top);
+      },
       addClassAtRowIndex: (rowIndex: number, className: string) => {
         this.getRows()[rowIndex].classList.add(className);
       },
       getRowCount: () => this.getRows().length,
       getRowElements:
-          () => [].slice.call(this.root.querySelectorAll(strings.ROW_SELECTOR)),
+          () => [].slice.call(this.root.querySelectorAll(selectors.ROW)),
       getRowIdAtIndex: (rowIndex: number) =>
-          this.getRows()[rowIndex].getAttribute(strings.DATA_ROW_ID_ATTR),
+          this.getRows()[rowIndex].getAttribute(dataAttributes.ROW_ID),
       getRowIndexByChildElement: (el: Element) => {
-        return this.getRows().indexOf((closest(el, strings.ROW_SELECTOR) as HTMLElement));
+        return this.getRows().indexOf(
+            (closest(el, selectors.ROW) as HTMLElement));
       },
       getSelectedRowCount: () =>
-          this.root.querySelectorAll(strings.ROW_SELECTED_SELECTOR).length,
+          this.root.querySelectorAll(selectors.ROW_SELECTED).length,
       isCheckboxAtRowIndexChecked: (rowIndex: number) =>
           this.rowCheckboxList[rowIndex].checked,
       isHeaderRowCheckboxChecked: () => this.headerRowCheckbox.checked,
       isRowsSelectable: () =>
-          !!this.root.querySelector(strings.ROW_CHECKBOX_SELECTOR),
+          !!this.root.querySelector(selectors.ROW_CHECKBOX) ||
+          !!this.root.querySelector(selectors.HEADER_ROW_CHECKBOX),
       notifyRowSelectionChanged:
           (data: MDCDataTableRowSelectionChangedEventDetail) => {
             this.emit(
@@ -153,7 +257,7 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
         }
 
         const checkboxEl =
-            (this.root.querySelector(strings.HEADER_ROW_CHECKBOX_SELECTOR) as
+            (this.root.querySelector(selectors.HEADER_ROW_CHECKBOX) as
              HTMLElement);
         this.headerRowCheckbox = this.checkboxFactory(checkboxEl);
       },
@@ -167,8 +271,7 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
         this.rowCheckboxList = [];
         this.getRows().forEach((rowEl) => {
           const checkbox = this.checkboxFactory(
-              (rowEl.querySelector(strings.ROW_CHECKBOX_SELECTOR) as
-               HTMLElement));
+              (rowEl.querySelector(selectors.ROW_CHECKBOX) as HTMLElement));
           this.rowCheckboxList.push(checkbox);
         });
       },
@@ -188,6 +291,17 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
       setRowCheckboxCheckedAtIndex: (rowIndex: number, checked: boolean) => {
         this.rowCheckboxList[rowIndex].checked = checked;
       },
+      setSortStatusLabelByHeaderCellIndex: (
+          columnIndex: number, sortValue: SortValue) => {
+        const headerCell = this.getHeaderCells()[columnIndex];
+        const sortStatusLabel =
+            headerCell.querySelector<HTMLElement>(selectors.SORT_STATUS_LABEL);
+
+        if (!sortStatusLabel) return;
+
+        sortStatusLabel.textContent =
+            this.getSortStatusMessageBySortValue(sortValue);
+      },
     };
     return new MDCDataTableFoundation(adapter);
   }
@@ -197,6 +311,54 @@ export class MDCDataTable extends MDCComponent<MDCDataTableFoundation> {
   }
 
   private getRowIdByIndex(index: number): string|null {
-    return this.getRowByIndex(index).getAttribute(strings.DATA_ROW_ID_ATTR);
+    return this.getRowByIndex(index).getAttribute(dataAttributes.ROW_ID);
+  }
+
+  private handleHeaderRowClick(event: Event): void {
+    const headerCell =
+        closest(event.target as Element, selectors.HEADER_CELL_WITH_SORT) as
+        HTMLElement;
+
+    if (!headerCell) {
+      return;
+    }
+
+    const columnId = headerCell.getAttribute(dataAttributes.COLUMN_ID);
+    const columnIndex = this.getHeaderCells().indexOf(headerCell);
+    if (columnIndex === -1) {
+      return;
+    }
+
+    this.foundation.handleSortAction({columnId, columnIndex, headerCell});
+  }
+
+  private getSortStatusMessageBySortValue(sortValue: SortValue): string {
+    switch (sortValue) {
+      case SortValue.ASCENDING:
+        return messages.SORTED_IN_ASCENDING;
+      case SortValue.DESCENDING:
+        return messages.SORTED_IN_DESCENDING;
+      default:
+        return '';
+    }
+  }
+
+  private getLinearProgressElement(): HTMLElement {
+    const el =
+        this.root.querySelector<HTMLElement>(`.${cssClasses.LINEAR_PROGRESS}`);
+    if (!el) {
+      throw new Error('MDCDataTable: linear progress element is not found.');
+    }
+
+    return el;
+  }
+
+  private getLinearProgress(): MDCLinearProgress {
+    if (!this.linearProgress) {
+      const el = this.getLinearProgressElement();
+      this.linearProgress = new MDCLinearProgress(el);
+    }
+
+    return this.linearProgress;
   }
 }

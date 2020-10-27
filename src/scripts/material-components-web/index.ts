@@ -22,6 +22,7 @@
  */
 
 import autoInit from './../auto-init/index';
+import * as banner from './../banner/index';
 import * as base from './../base/index';
 import * as checkbox from './../checkbox/index';
 import * as chips from './../chips/index';
@@ -50,63 +51,42 @@ import * as tabIndicator from './../tab-indicator/index';
 import * as tabScroller from './../tab-scroller/index';
 import * as tab from './../tab/index';
 import * as textField from './../textfield/index';
+import * as tooltip from './../tooltip/index';
 import * as topAppBar from './../top-app-bar/index';
 
 // Register all components
-// @ts-ignore
+autoInit.register('MDCBanner', banner.MDCBanner);
 autoInit.register('MDCCheckbox', checkbox.MDCCheckbox);
-// @ts-ignore
 autoInit.register('MDCChip', chips.MDCChip);
-// @ts-ignore
 autoInit.register('MDCChipSet', chips.MDCChipSet);
-// @ts-ignore
 autoInit.register('MDCCircularProgress', circularProgress.MDCCircularProgress);
-// @ts-ignore
 autoInit.register('MDCDataTable', dataTable.MDCDataTable);
-// @ts-ignore
 autoInit.register('MDCDialog', dialog.MDCDialog);
-// @ts-ignore
 autoInit.register('MDCDrawer', drawer.MDCDrawer);
-// @ts-ignore
 autoInit.register('MDCFloatingLabel', floatingLabel.MDCFloatingLabel);
-// @ts-ignore
 autoInit.register('MDCFormField', formField.MDCFormField);
-// @ts-ignore
 autoInit.register('MDCIconButtonToggle', iconButton.MDCIconButtonToggle);
-// @ts-ignore
 autoInit.register('MDCLineRipple', lineRipple.MDCLineRipple);
-// @ts-ignore
 autoInit.register('MDCLinearProgress', linearProgress.MDCLinearProgress);
-// @ts-ignore
 autoInit.register('MDCList', list.MDCList);
-// @ts-ignore
 autoInit.register('MDCMenu', menu.MDCMenu);
-// @ts-ignore
 autoInit.register('MDCMenuSurface', menuSurface.MDCMenuSurface);
-// @ts-ignore
 autoInit.register('MDCNotchedOutline', notchedOutline.MDCNotchedOutline);
-// @ts-ignore
 autoInit.register('MDCRadio', radio.MDCRadio);
-// @ts-ignore
 autoInit.register('MDCRipple', ripple.MDCRipple);
-// @ts-ignore
 autoInit.register('MDCSelect', select.MDCSelect);
-// @ts-ignore
 autoInit.register('MDCSlider', slider.MDCSlider);
-// @ts-ignore
 autoInit.register('MDCSnackbar', snackbar.MDCSnackbar);
-// @ts-ignore
 autoInit.register('MDCSwitch', switchControl.MDCSwitch);
-// @ts-ignore
 autoInit.register('MDCTabBar', tabBar.MDCTabBar);
-// @ts-ignore
 autoInit.register('MDCTextField', textField.MDCTextField);
-// @ts-ignore
+autoInit.register('MDCTooltip', tooltip.MDCTooltip);
 autoInit.register('MDCTopAppBar', topAppBar.MDCTopAppBar);
 
 // Export all components.
 export {
   autoInit,
+  banner,
   base,
   checkbox,
   chips,
@@ -135,5 +115,6 @@ export {
   tabIndicator,
   tabScroller,
   textField,
+  tooltip,
   topAppBar,
 };
