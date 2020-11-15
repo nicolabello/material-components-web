@@ -67,6 +67,19 @@ $_exit-duration: 250ms;
     @include banner-theme.z-index(banner-theme.$z-index, $query: $query);
 
     @include feature-targeting.targets($feat-structure) {
+      // Mobile view styles.
+      @media (max-width: banner-theme.$mobile-breakpoint) {
+        // Span across viewport for fixed mobile view.
+        .mdc-banner__fixed {
+          left: 0;
+          right: 0;
+        }
+
+        .mdc-banner__text {
+          @include rtl-mixins.reflexive-property(margin, 16px, 36px);
+        }
+      }
+
       border-bottom-style: solid;
       border-bottom-width: 1px;
       box-sizing: border-box;
@@ -75,6 +88,10 @@ $_exit-duration: 250ms;
       height: 0;
       position: relative;
       width: 100%;
+    }
+
+    &.mdc-banner--mobile-stacked {
+      @include banner-theme.mobile-stacked($query: $query);
     }
   }
 
@@ -135,7 +152,14 @@ $_exit-duration: 250ms;
       min-height: 52px;
       position: absolute;
       transform: translateY(-100%);
-      width: 720px;
+      width: 100%;
+    }
+  }
+
+  .mdc-banner__graphic-text-wrapper {
+    @include feature-targeting.targets($feat-structure) {
+      display: flex;
+      width: 100%;
     }
   }
 
