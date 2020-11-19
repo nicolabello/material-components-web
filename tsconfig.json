@@ -10,5 +10,5 @@
     "**/*.test.*",
     "**/*.spec.*"
   ],
-  "extends": "./temp/material-components-web/material-components-web-master/tsconfig-base.json"
+  "extends": "./src/tsconfig-base.json"
 }

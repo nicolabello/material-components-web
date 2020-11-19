@@ -88,11 +88,21 @@ function updateScripts(repoPath, mainFolder) {
 
 }
 
+function updateTsConfig(repoPath, mainFolder) {
+
+    rimraf.sync(`${mainFolder}/tsconfig*.json`);
+
+    // Copy all js files
+    copyFiles(`${repoPath}/material-components-web-master`, mainFolder, '/tsconfig*.json');
+
+}
+
 (async () => {
 
     const repoPath = 'temp/material-components-web';
     await downloadAndExtract('https://github.com/material-components/material-components-web/archive/master.zip', repoPath);
     updateStyles(repoPath, 'src/styles');
     updateScripts(repoPath, 'src/scripts');
+    updateTsConfig(repoPath, 'src');
 
 })();
