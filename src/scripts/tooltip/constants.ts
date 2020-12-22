@@ -43,6 +43,12 @@ const numbers = {
   // LINT.ThenChange(_tooltip.scss:tooltip-dimensions)
 };
 
+const attributes = {
+  ARIA_EXPANDED: 'aria-expanded',
+  ARIA_HASPOPUP: 'aria-haspopup',
+  PERSISTENT: 'data-mdc-tooltip-persistent',
+};
+
 const events = {
   HIDDEN: 'MDCTooltip:hidden',
 };
@@ -51,6 +57,7 @@ const events = {
 enum XPosition {
   DETECTED = 0,
   START = 1,
+  // Note: CENTER is not valid for rich tooltips.
   CENTER = 2,
   END = 3,
 }
@@ -72,4 +79,12 @@ enum AnchorBoundaryType {
   UNBOUNDED = 1,
 }
 
-export {CssClasses, numbers, events, XPosition, AnchorBoundaryType, YPosition};
+export {
+  CssClasses,
+  numbers,
+  attributes,
+  events,
+  XPosition,
+  AnchorBoundaryType,
+  YPosition
+};

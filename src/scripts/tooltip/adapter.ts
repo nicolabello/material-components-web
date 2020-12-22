@@ -99,6 +99,21 @@ export interface MDCTooltipAdapter {
   isRTL(): boolean;
 
   /**
+   * Checks if element is contained within the anchor element.
+   */
+  anchorContainsElement(element: HTMLElement): boolean;
+
+  /**
+   * Checks if element is contained within the tooltip element.
+   */
+  tooltipContainsElement(element: HTMLElement): boolean;
+
+  /**
+   * Sets focus on the anchor element.
+   */
+  focusAnchorElement(): void;
+
+  /**
    * Registers an event listener to the root element.
    */
   registerEventHandler<K extends EventType>(
