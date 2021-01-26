@@ -58,9 +58,20 @@ export interface MDCTooltipAdapter {
   removeClass(className: CssClasses): void;
 
   /**
+   * @return the value of the given computed style property on the root element.
+   */
+  getComputedStyleProperty(propertyName: string): string;
+
+  /**
    * Sets the property value of the given style property on the root element.
    */
   setStyleProperty(propertyName: string, value: string): void;
+
+  /**
+   * Sets the property value of the given style property on the tooltip's
+   * surface element (indicated by the "mdc-tooltip__surface" class).
+   */
+  setSurfaceStyleProperty(propertyName: string, value: string): void;
 
   /**
    * @return the width of the viewport.
@@ -81,6 +92,11 @@ export interface MDCTooltipAdapter {
    * @return the ClientRect for the anchor element.
    */
   getAnchorBoundingRect(): ClientRect|null;
+
+  /**
+   * @return the ClientRect for the parent of the tooltip element.
+   */
+  getParentBoundingRect(): ClientRect|null;
 
   /**
    * @return the attribute string if present on the anchor element, null

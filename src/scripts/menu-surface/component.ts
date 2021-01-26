@@ -27,7 +27,7 @@ import {MDCMenuSurfaceAdapter} from './adapter';
 import {Corner, cssClasses, strings} from './constants';
 import {MDCMenuSurfaceFoundation} from './foundation';
 import {MDCMenuDistance} from './types';
-import * as util from './util';
+import {getCorrectPropertyName} from './../animation/util';
 
 type RegisterFunction = () => void;
 
@@ -155,13 +155,17 @@ export class MDCMenuSurface extends MDCComponent<MDCMenuSurfaceFoundation> {
       hasAnchor: () => !!this.anchorElement,
       notifyClose: () =>
           this.emit(MDCMenuSurfaceFoundation.strings.CLOSED_EVENT, {}),
+      notifyClosing: () => {
+        this.emit(MDCMenuSurfaceFoundation.strings.CLOSING_EVENT, {});
+      },
       notifyOpen: () =>
           this.emit(MDCMenuSurfaceFoundation.strings.OPENED_EVENT, {}),
       isElementInContainer: (el) => this.root.contains(el),
       isRtl: () =>
           getComputedStyle(this.root).getPropertyValue('direction') === 'rtl',
       setTransformOrigin: (origin) => {
-        const propertyName = `${util.getTransformPropertyName(window)}-origin`;
+        const propertyName =
+            `${getCorrectPropertyName(window, 'transform')}-origin`;
         (this.root as HTMLElement).style.setProperty(propertyName, origin);
       },
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2018 Google Inc.
+ * Copyright 2021 Google Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,19 +21,21 @@
  * THE SOFTWARE.
  */
 
-type CssTransformPropertyName = ('transform' | 'webkitTransform');
+// Opt-in resize observer types
 
-let cachedCssTransformPropertyName_: CssTransformPropertyName | undefined;
-
-/**
- * Returns the name of the correct transform property to use on the current browser.
- */
-function getTransformPropertyName(globalObj: Window, forceRefresh = false): CssTransformPropertyName {
-  if (cachedCssTransformPropertyName_ === undefined || forceRefresh) {
-    const el = globalObj.document.createElement('div');
-    cachedCssTransformPropertyName_ = 'transform' in el.style ? 'transform' : 'webkitTransform';
-  }
-  return cachedCssTransformPropertyName_;
+export interface MDCResizeObserverEntry {
+  contentRect: DOMRectReadOnly;
 }
 
-export {getTransformPropertyName};
+export interface MDCResizeObserver {
+  new(callback: MDCResizeObserverCallback): MDCResizeObserver;
+  disconnect(): void;
+  observe(target: Element): void;
+}
+
+export interface WithMDCResizeObserver {
+  ResizeObserver: MDCResizeObserver;
+}
+
+export type MDCResizeObserverCallback =
+    (entries: MDCResizeObserverEntry[], observer: MDCResizeObserver) => void;

@@ -25,7 +25,7 @@ import {MDCComponent} from './../base/component';
 import {SpecificEventListener} from './../base/types';
 
 import {MDCTooltipAdapter} from './adapter';
-import {AnchorBoundaryType, events, XPosition, YPosition} from './constants';
+import {AnchorBoundaryType, CssClasses, events, XPosition, YPosition} from './constants';
 import {MDCTooltipFoundation} from './foundation';
 
 export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
@@ -61,8 +61,8 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
   }
 
   initialSyncWithDOM() {
-    this.isTooltipRich = this.foundation.getIsRich();
-    this.isTooltipPersistent = this.foundation.getIsPersistent();
+    this.isTooltipRich = this.foundation.isRich();
+    this.isTooltipPersistent = this.foundation.isPersistent();
 
     this.handleMouseEnter = () => {
       this.foundation.handleAnchorMouseEnter();
@@ -127,6 +127,14 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
     this.foundation.setAnchorBoundaryType(type);
   }
 
+  hide() {
+    this.foundation.hide();
+  }
+
+  isShown() {
+    this.foundation.isShown();
+  }
+
   getDefaultFoundation() {
     const adapter: MDCTooltipAdapter = {
       getAttribute: (attr) => this.root.getAttribute(attr),
@@ -140,8 +148,17 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       removeClass: (className) => {
         this.root.classList.remove(className);
       },
+      getComputedStyleProperty: (propertyName) => {
+        return window.getComputedStyle(this.root).getPropertyValue(
+            propertyName);
+      },
       setStyleProperty: (propertyName, value) => {
         (this.root as HTMLElement).style.setProperty(propertyName, value);
+      },
+      setSurfaceStyleProperty: (propertyName, value) => {
+        const surface =
+            this.root.querySelector<HTMLElement>(`.${CssClasses.SURFACE}`);
+        surface?.style.setProperty(propertyName, value);
       },
       getViewportWidth: () => window.innerWidth,
       getViewportHeight: () => window.innerHeight,
@@ -153,6 +170,9 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       },
       getAnchorBoundingRect: () => {
         return this.anchorElem ? this.anchorElem.getBoundingClientRect() : null;
+      },
+      getParentBoundingRect: () => {
+        return this.root.parentElement?.getBoundingClientRect() ?? null;
       },
       getAnchorAttribute: (attr) => {
         return this.anchorElem ? this.anchorElem.getAttribute(attr) : null;

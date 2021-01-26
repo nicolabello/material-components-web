@@ -23,6 +23,7 @@
 
 import {MDCComponent} from './../base/component';
 import {EventType, SpecificEventListener} from './../base/types';
+import {applyPassive} from './../dom/events';
 import {matches} from './../dom/ponyfill';
 import {MDCRippleAdapter} from './../ripple/adapter';
 import {MDCRipple} from './../ripple/component';
@@ -323,7 +324,7 @@ export class MDCSlider extends MDCComponent<MDCSliderFoundation> {
         isUnbounded: () => true,
         registerInteractionHandler: <K extends EventType>(
             evtType: K, handler: SpecificEventListener<K>) => {
-          input.addEventListener(evtType, handler);
+          input.addEventListener(evtType, handler, applyPassive());
         },
         removeClass: (className: string) => {
           rippleSurface.classList.remove(className);

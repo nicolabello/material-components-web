@@ -22,12 +22,13 @@
  */
 
 import {AnimationFrame} from './../animation/animationframe';
+import {getCorrectPropertyName} from './../animation/util';
 import {MDCFoundation} from './../base/foundation';
 import {SpecificEventListener} from './../base/types';
 import {KEY, normalizeKey} from './../dom/keyboard';
 
 import {MDCTooltipAdapter} from './adapter';
-import {AnchorBoundaryType, attributes, CssClasses, numbers, XPosition, YPosition} from './constants';
+import {AnchorBoundaryType, attributes, CssClasses, numbers, strings, XPosition, YPosition} from './constants';
 import {ShowTooltipOptions} from './types';
 
 const {
@@ -44,6 +45,9 @@ enum AnimationKeys {
   POLL_ANCHOR = 'poll_anchor'
 }
 
+// Accessing `window` without a `typeof` check will throw on Node environments.
+const HAS_WINDOW = typeof window !== 'undefined';
+
 export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   static get defaultAdapter(): MDCTooltipAdapter {
     return {
@@ -52,11 +56,15 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
       addClass: () => undefined,
       hasClass: () => false,
       removeClass: () => undefined,
+      getComputedStyleProperty: () => '',
       setStyleProperty: () => undefined,
+      setSurfaceStyleProperty: () => undefined,
       getViewportWidth: () => 0,
       getViewportHeight: () => 0,
       getTooltipSize: () => ({width: 0, height: 0}),
       getAnchorBoundingRect: () =>
+          ({top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0}),
+      getParentBoundingRect: () =>
           ({top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0}),
       getAnchorAttribute: () => null,
       setAnchorAttribute: () => null,
@@ -74,10 +82,10 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     };
   }
 
-  private isInteractive!: boolean;  // assigned in init()
-  private isRich!: boolean;         // assigned in init()
-  private isPersistent!: boolean;   // assigned in init()
-  private isShown = false;
+  private interactiveTooltip!: boolean;  // assigned in init()
+  private richTooltip!: boolean;         // assigned in init()
+  private persistentTooltip!: boolean;   // assigned in init()
+  private tooltipShown = false;
   private anchorGap = numbers.BOUNDED_ANCHOR_GAP;
   private xTooltipPos = XPosition.DETECTED;
   private yTooltipPos = YPosition.DETECTED;
@@ -88,6 +96,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   private readonly showDelayMs = numbers.SHOW_DELAY_MS;
 
   private anchorRect: ClientRect|null = null;
+  private parentRect: ClientRect|null = null;
   private frameId: number|null = null;
   private hideTimeout: number|null = null;
   private showTimeout: number|null = null;
@@ -137,30 +146,38 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   }
 
   init() {
-    this.isRich = this.adapter.hasClass(RICH);
-    this.isPersistent =
+    this.richTooltip = this.adapter.hasClass(RICH);
+    this.persistentTooltip =
         this.adapter.getAttribute(attributes.PERSISTENT) === 'true';
-    this.isInteractive =
+    this.interactiveTooltip =
         !!this.adapter.getAnchorAttribute(attributes.ARIA_EXPANDED) &&
-        this.adapter.getAnchorAttribute(attributes.ARIA_HASPOPUP) === 'true';
+        this.adapter.getAnchorAttribute(attributes.ARIA_HASPOPUP) === 'dialog';
   }
 
-  getIsRich() {
-    return this.isRich;
+  isShown() {
+    return this.tooltipShown;
   }
 
-  getIsPersistent() {
-    return this.isPersistent;
+  isRich() {
+    return this.richTooltip;
+  }
+
+  isPersistent() {
+    return this.persistentTooltip;
   }
 
   handleAnchorMouseEnter() {
-    if (this.isShown) {
+    if (this.tooltipShown) {
       // Covers the instance where a user hovers over the anchor to reveal the
       // tooltip, and then quickly navigates away and then back to the anchor.
       // The tooltip should stay visible without animating out and then back in
       // again.
       this.show();
     } else {
+      // clearHideTimeout here since handleAnchorMouseLeave sets a hideTimeout
+      // and that can execute before the showTimeout executes, resulting in hide
+      // being called and the showTimeout set below to be cleared.
+      this.clearHideTimeout();
       this.showTimeout = setTimeout(() => {
         this.show();
       }, this.showDelayMs);
@@ -193,7 +210,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   }
 
   handleAnchorBlur(evt: FocusEvent) {
-    if (this.isRich) {
+    if (this.richTooltip) {
       const tooltipContainsRelatedTargetElement =
           evt.relatedTarget instanceof HTMLElement &&
           this.adapter.tooltipContainsElement(evt.relatedTarget);
@@ -207,7 +224,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   }
 
   handleAnchorClick() {
-    if (this.isShown) {
+    if (this.tooltipShown) {
       this.hide();
     } else {
       this.show();
@@ -215,14 +232,19 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   }
 
   handleDocumentClick(evt: MouseEvent) {
-    const anchorContainsTargetElement = evt.target instanceof HTMLElement &&
-        this.adapter.anchorContainsElement(evt.target);
-    // For persistent rich tooltips, we will only hide if the click target is
-    // not within the anchor element, otherwise both the anchor element's click
-    // handler and this handler will handle the click (due to event
-    // propagation), resulting in a shown tooltip being immediately hidden if
-    // the tooltip was initially hidden.
-    if (this.isRich && this.isPersistent && anchorContainsTargetElement) {
+    const anchorOrTooltipContainsTargetElement =
+        evt.target instanceof HTMLElement &&
+        (this.adapter.anchorContainsElement(evt.target) ||
+         this.adapter.tooltipContainsElement(evt.target));
+    // For persistent rich tooltips, we will not hide if:
+    // - The click target is within the anchor element. Otherwise, both
+    //   the anchor element's click handler and this handler will handle the
+    //   click (due to event propagation), resulting in a shown tooltip
+    //   being immediately hidden if the tooltip was initially hidden.
+    // - The click target is within the tooltip element, since clicks
+    //   on the tooltip do not close the tooltip.
+    if (this.richTooltip && this.persistentTooltip &&
+        anchorOrTooltipContainsTargetElement) {
       return;
     }
     // Hide the tooltip immediately on click.
@@ -284,22 +306,22 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.clearHideTimeout();
     this.clearShowTimeout();
 
-    if (this.isShown) {
+    if (this.tooltipShown) {
       return;
     }
 
-    this.isShown = true;
+    this.tooltipShown = true;
     const showTooltipOptions = this.parseShowTooltipOptions();
     if (!showTooltipOptions.hideFromScreenreader) {
       this.adapter.setAttribute('aria-hidden', 'false');
     }
-    if (this.isRich) {
-      if (this.isInteractive) {
+    if (this.richTooltip) {
+      if (this.interactiveTooltip) {
         this.adapter.setAnchorAttribute('aria-expanded', 'true');
       }
       this.adapter.registerEventHandler(
           'focusout', this.richTooltipFocusOutHandler);
-      if (!this.isPersistent) {
+      if (!this.persistentTooltip) {
         this.adapter.registerEventHandler(
             'mouseenter', this.richTooltipMouseEnterHandler);
         this.adapter.registerEventHandler(
@@ -308,11 +330,12 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     }
     this.adapter.removeClass(HIDE);
     this.adapter.addClass(SHOWING);
-    if (this.isTooltipMultiline() && !this.isRich) {
+    if (this.isTooltipMultiline() && !this.richTooltip) {
       this.adapter.addClass(MULTILINE_TOOLTIP);
     }
     this.anchorRect = this.adapter.getAnchorBoundingRect();
-    this.positionTooltip();
+    this.parentRect = this.adapter.getParentBoundingRect();
+    this.richTooltip ? this.positionRichTooltip() : this.positionPlainTooltip();
 
     this.adapter.registerDocumentEventHandler(
         'click', this.documentClickHandler);
@@ -333,7 +356,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.clearHideTimeout();
     this.clearShowTimeout();
 
-    if (!this.isShown) {
+    if (!this.tooltipShown) {
       return;
     }
 
@@ -341,15 +364,15 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
       cancelAnimationFrame(this.frameId);
     }
 
-    this.isShown = false;
+    this.tooltipShown = false;
     this.adapter.setAttribute('aria-hidden', 'true');
     this.adapter.deregisterEventHandler(
         'focusout', this.richTooltipFocusOutHandler);
-    if (this.isRich) {
-      if (this.isInteractive) {
+    if (this.richTooltip) {
+      if (this.interactiveTooltip) {
         this.adapter.setAnchorAttribute('aria-expanded', 'false');
       }
-      if (!this.isPersistent) {
+      if (!this.persistentTooltip) {
         this.adapter.deregisterEventHandler(
             'mouseenter', this.richTooltipMouseEnterHandler);
         this.adapter.deregisterEventHandler(
@@ -424,10 +447,52 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
         tooltipSize.width >= numbers.MAX_WIDTH;
   }
 
-  private positionTooltip() {
-    const {top, left} = this.calculateTooltipDistance(this.anchorRect);
+  private positionPlainTooltip() {
+    // A plain tooltip has `fixed` positioning and is placed as an immediate
+    // child of the document body. Its positioning is calculated with respect to
+    // the viewport.
+    const {top, yTransformOrigin, left, xTransformOrigin} =
+        this.calculateTooltipStyles(this.anchorRect);
+
+    const transformProperty =
+        HAS_WINDOW ? getCorrectPropertyName(window, 'transform') : 'transform';
+    this.adapter.setSurfaceStyleProperty(
+        `${transformProperty}-origin`,
+        `${yTransformOrigin} ${xTransformOrigin}`);
     this.adapter.setStyleProperty('top', `${top}px`);
     this.adapter.setStyleProperty('left', `${left}px`);
+  }
+
+  private positionRichTooltip() {
+    // TODO(b/177686782): Remove width setting when max-content is used to style
+    // the rich tooltip.
+
+    // getComputedStyleProperty is used instead of getTooltipSize since
+    // getTooltipSize returns the offSetWidth, which includes the border and
+    // padding. What we need is the width of the tooltip without border and
+    // padding.
+    const width = this.adapter.getComputedStyleProperty('width');
+    // When rich tooltips are positioned within their parent containers, the
+    // tooltip width might be shrunk if it collides with the edge of the parent
+    // container. We set the width of the tooltip to prevent this.
+    this.adapter.setStyleProperty('width', width);
+
+    const {top, yTransformOrigin, left, xTransformOrigin} =
+        this.calculateTooltipStyles(this.anchorRect);
+
+    const transformProperty =
+        HAS_WINDOW ? getCorrectPropertyName(window, 'transform') : 'transform';
+    this.adapter.setSurfaceStyleProperty(
+        `${transformProperty}-origin`,
+        `${yTransformOrigin} ${xTransformOrigin}`);
+    // A rich tooltip has `absolute` positioning and is placed as a sibling to
+    // the anchor element. Its positioning is calculated with respect to the
+    // parent element, and so the values need to be adjusted against the parent
+    // element.
+    const leftAdjustment = left - (this.parentRect?.left ?? 0);
+    const topAdjustment = top - (this.parentRect?.top ?? 0);
+    this.adapter.setStyleProperty('top', `${topAdjustment}px`);
+    this.adapter.setStyleProperty('left', `${leftAdjustment}px`);
   }
 
   /**
@@ -444,7 +509,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
    * Users can specify an alignment, however, if this alignment results in the
    * tooltip colliding with the viewport, this specification is overwritten.
    */
-  private calculateTooltipDistance(anchorRect: ClientRect|null) {
+  private calculateTooltipStyles(anchorRect: ClientRect|null) {
     if (!anchorRect) {
       return {top: 0, left: 0};
     }
@@ -452,48 +517,75 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     const tooltipSize = this.adapter.getTooltipSize();
     const top = this.calculateYTooltipDistance(anchorRect, tooltipSize.height);
     const left = this.calculateXTooltipDistance(anchorRect, tooltipSize.width);
-    return {top, left};
+
+    return {
+      top: top.distance,
+      yTransformOrigin: top.yTransformOrigin,
+      left: left.distance,
+      xTransformOrigin: left.xTransformOrigin
+    };
   }
 
   /**
    * Calculates the `left` distance for the tooltip.
+   * Returns the distance value and a string indicating the x-axis transform-
+   * origin that should be used when animating the tooltip.
    */
   private calculateXTooltipDistance(
-      anchorRect: ClientRect, tooltipWidth: number) {
+      anchorRect: ClientRect,
+      tooltipWidth: number): ({distance: number, xTransformOrigin: string}) {
     const isLTR = !this.adapter.isRTL();
     let startPos, endPos, centerPos: number|undefined;
-    if (this.isRich) {
+    let startTransformOrigin, endTransformOrigin: string;
+    if (this.richTooltip) {
       startPos = isLTR ? anchorRect.left - tooltipWidth : anchorRect.right;
       endPos = isLTR ? anchorRect.right : anchorRect.left - tooltipWidth;
+
+      startTransformOrigin = isLTR ? strings.RIGHT : strings.LEFT;
+      endTransformOrigin = isLTR ? strings.LEFT : strings.RIGHT;
     } else {
       startPos = isLTR ? anchorRect.left : anchorRect.right - tooltipWidth;
       endPos = isLTR ? anchorRect.right - tooltipWidth : anchorRect.left;
       centerPos = anchorRect.left + (anchorRect.width - tooltipWidth) / 2;
+
+      startTransformOrigin = isLTR ? strings.LEFT : strings.RIGHT;
+      endTransformOrigin = isLTR ? strings.RIGHT : strings.LEFT;
     }
 
-    const positionOptions = this.isRich ?
+    const positionOptions = this.richTooltip ?
         this.determineValidPositionOptions(startPos, endPos) :
         // For plain tooltips, centerPos is defined
         this.determineValidPositionOptions(centerPos!, startPos, endPos);
 
     if (this.xTooltipPos === XPosition.START && positionOptions.has(startPos)) {
-      return startPos;
+      return {distance: startPos, xTransformOrigin: startTransformOrigin};
     }
     if (this.xTooltipPos === XPosition.END && positionOptions.has(endPos)) {
-      return endPos;
+      return {distance: endPos, xTransformOrigin: endTransformOrigin};
     }
     if (this.xTooltipPos === XPosition.CENTER &&
         positionOptions.has(centerPos)) {
-      return centerPos;
+      // This code path is only executed if calculating the distance for plain
+      // tooltips. In this instance, centerPos will always be defined, so we can
+      // safely assert that the returned value is non-null/undefined.
+      return {distance: centerPos!, xTransformOrigin: strings.CENTER};
     }
 
     // If no user position is supplied, rich tooltips default to end pos, then
     // start position. Plain tooltips default to center, start, then end.
-    const possiblePositions =
-        this.isRich ? [endPos, startPos] : [centerPos, startPos, endPos];
+    const possiblePositions = this.richTooltip ?
+        [
+          {distance: endPos, xTransformOrigin: endTransformOrigin},
+          {distance: startPos, xTransformOrigin: startTransformOrigin}
+        ] :
+        [
+          {distance: centerPos!, xTransformOrigin: strings.CENTER},
+          {distance: startPos, xTransformOrigin: startTransformOrigin},
+          {distance: endPos, xTransformOrigin: endTransformOrigin}
+        ];
 
     const validPosition =
-        possiblePositions.find(pos => positionOptions.has(pos));
+        possiblePositions.find(({distance}) => positionOptions.has(distance));
     if (validPosition) {
       return validPosition;
     }
@@ -504,10 +596,15 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     // narrow. In this case, we allow the tooltip to be mis-aligned from the
     // anchor element.
     if (anchorRect.left < 0) {
-      return this.minViewportTooltipThreshold;
+      return {
+        distance: this.minViewportTooltipThreshold,
+        xTransformOrigin: strings.LEFT
+      };
     } else {
       const viewportWidth = this.adapter.getViewportWidth();
-      return viewportWidth - (tooltipWidth + this.minViewportTooltipThreshold);
+      const distance =
+          viewportWidth - (tooltipWidth + this.minViewportTooltipThreshold);
+      return {distance, xTransformOrigin: strings.RIGHT};
     }
   }
 
@@ -555,6 +652,8 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
 
   /**
    * Calculates the `top` distance for the tooltip.
+   * Returns the distance value and a string indicating the y-axis transform-
+   * origin that should be used when animating the tooltip.
    */
   private calculateYTooltipDistance(
       anchorRect: ClientRect, tooltipHeight: number) {
@@ -565,25 +664,25 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
 
     if (this.yTooltipPos === YPosition.ABOVE &&
         yPositionOptions.has(aboveYPos)) {
-      return aboveYPos;
+      return {distance: aboveYPos, yTransformOrigin: strings.BOTTOM};
     } else if (
         this.yTooltipPos === YPosition.BELOW &&
         yPositionOptions.has(belowYPos)) {
-      return belowYPos;
+      return {distance: belowYPos, yTransformOrigin: strings.TOP};
     }
 
     if (yPositionOptions.has(belowYPos)) {
-      return belowYPos;
+      return {distance: belowYPos, yTransformOrigin: strings.TOP};
     }
 
     if (yPositionOptions.has(aboveYPos)) {
-      return aboveYPos;
+      return {distance: aboveYPos, yTransformOrigin: strings.BOTTOM};
     }
 
     // Indicates that all potential positions would result in the tooltip
     // colliding with the viewport. This would only occur when the viewport is
     // very short.
-    return belowYPos;
+    return {distance: belowYPos, yTransformOrigin: strings.TOP};
   }
 
   /**
@@ -642,7 +741,9 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
         newAnchorRect.height !== this.anchorRect.height ||
         newAnchorRect.width !== this.anchorRect.width) {
       this.anchorRect = newAnchorRect;
-      this.positionTooltip();
+      this.parentRect = this.adapter.getParentBoundingRect();
+      this.richTooltip ? this.positionRichTooltip() :
+                         this.positionPlainTooltip();
     }
   }
 
@@ -675,10 +776,10 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.adapter.removeClass(HIDE);
     this.adapter.removeClass(HIDE_TRANSITION);
 
-    if (this.isRich) {
+    if (this.richTooltip) {
       this.adapter.deregisterEventHandler(
           'focusout', this.richTooltipFocusOutHandler);
-      if (!this.isPersistent) {
+      if (!this.persistentTooltip) {
         this.adapter.deregisterEventHandler(
             'mouseenter', this.richTooltipMouseEnterHandler);
         this.adapter.deregisterEventHandler(

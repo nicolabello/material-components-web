@@ -81,6 +81,7 @@ export class MDCMenuSurfaceFoundation extends MDCFoundation<MDCMenuSurfaceAdapte
 
       notifyClose: () => undefined,
       notifyOpen: () => undefined,
+      notifyClosing: () => undefined,
     };
     // tslint:enable:object-literal-sort-keys
   }
@@ -231,6 +232,8 @@ export class MDCMenuSurfaceFoundation extends MDCFoundation<MDCMenuSurfaceAdapte
       return;
     }
 
+    this.adapter.notifyClosing();
+
     if (this.isQuickOpen) {
       this.isSurfaceOpen = false;
       if (!skipRestoreFocus) {
@@ -242,25 +245,25 @@ export class MDCMenuSurfaceFoundation extends MDCFoundation<MDCMenuSurfaceAdapte
           MDCMenuSurfaceFoundation.cssClasses.IS_OPEN_BELOW);
       this.adapter.notifyClose();
 
-    } else {
-      this.adapter.addClass(
-          MDCMenuSurfaceFoundation.cssClasses.ANIMATING_CLOSED);
-      requestAnimationFrame(() => {
-        this.adapter.removeClass(MDCMenuSurfaceFoundation.cssClasses.OPEN);
-        this.adapter.removeClass(
-            MDCMenuSurfaceFoundation.cssClasses.IS_OPEN_BELOW);
-        this.closeAnimationEndTimerId = setTimeout(() => {
-          this.closeAnimationEndTimerId = 0;
-          this.adapter.removeClass(
-              MDCMenuSurfaceFoundation.cssClasses.ANIMATING_CLOSED);
-          this.adapter.notifyClose();
-        }, numbers.TRANSITION_CLOSE_DURATION);
-      });
+      return;
+    }
 
-      this.isSurfaceOpen = false;
-      if (!skipRestoreFocus) {
-        this.maybeRestoreFocus();
-      }
+    this.adapter.addClass(MDCMenuSurfaceFoundation.cssClasses.ANIMATING_CLOSED);
+    requestAnimationFrame(() => {
+      this.adapter.removeClass(MDCMenuSurfaceFoundation.cssClasses.OPEN);
+      this.adapter.removeClass(
+          MDCMenuSurfaceFoundation.cssClasses.IS_OPEN_BELOW);
+      this.closeAnimationEndTimerId = setTimeout(() => {
+        this.closeAnimationEndTimerId = 0;
+        this.adapter.removeClass(
+            MDCMenuSurfaceFoundation.cssClasses.ANIMATING_CLOSED);
+        this.adapter.notifyClose();
+      }, numbers.TRANSITION_CLOSE_DURATION);
+    });
+
+    this.isSurfaceOpen = false;
+    if (!skipRestoreFocus) {
+      this.maybeRestoreFocus();
     }
   }
 
@@ -381,8 +384,8 @@ export class MDCMenuSurfaceFoundation extends MDCFoundation<MDCMenuSurfaceAdapte
     let availableTop;
     let availableBottom;
     if (isAnchoredToBottom) {
-      availableTop = viewportDistance.top - MARGIN_TO_EDGE + anchorSize.height +
-          this.anchorMargin.bottom;
+      availableTop =
+          viewportDistance.top - MARGIN_TO_EDGE + this.anchorMargin.bottom;
       availableBottom =
           viewportDistance.bottom - MARGIN_TO_EDGE - this.anchorMargin.bottom;
     } else {
@@ -393,7 +396,7 @@ export class MDCMenuSurfaceFoundation extends MDCFoundation<MDCMenuSurfaceAdapte
     }
 
     const isAvailableBottom = availableBottom - surfaceSize.height > 0;
-    if (!isAvailableBottom && availableTop >= availableBottom) {
+    if (!isAvailableBottom && availableTop > availableBottom) {
       // Attach bottom side of surface to the anchor.
       corner = this.setBit(corner, CornerBit.BOTTOM);
     }
