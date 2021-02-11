@@ -46,7 +46,7 @@ $_rich_corner_radius: 8px;
 $_rich_max-width: 320px;
 $_rich_padding: 8px;
 $_content-margin-x: 8px;
-$_content-type-scale: body1;
+$_content-type-scale: body2;
 $_title-type-scale: subtitle2;
 
 @mixin core-styles($query: feature-targeting.all()) {
@@ -78,12 +78,22 @@ $_title-type-scale: subtitle2;
     tooltip-theme.$exit-duration,
     $query: $query
   );
+  @include tooltip-theme.rich-text-ink-color(
+    tooltip-theme.$rich-title-text-color,
+    tooltip-theme.$rich-content-text-color,
+    tooltip-theme.$rich-content-link-color,
+    $query: $query
+  );
 
   .mdc-tooltip {
     @include feature-targeting.targets($feat-structure) {
       position: fixed;
       display: none;
     }
+    @include tooltip-theme.rich-fill-color(
+      tooltip-theme.$rich-background-color,
+      $query: $query
+    );
   }
 
   .mdc-tooltip-wrapper--rich {
@@ -100,17 +110,6 @@ $_title-type-scale: subtitle2;
     }
 
     &.mdc-tooltip--rich {
-      @include elevation-mixins.elevation(2, $query: $query);
-      @include tooltip-theme.fill-color(
-        tooltip-theme.$rich-background-color,
-        $query: $query
-      );
-      @include tooltip-theme.rich-text-ink-color(
-        tooltip-theme.$rich-title-text-color,
-        tooltip-theme.$rich-content-text-color,
-        tooltip-theme.$rich-content-link-color,
-        $query: $query
-      );
       @include feature-targeting.targets($feat-structure) {
         display: inline-block;
         border-radius: $_rich_corner_radius;
@@ -140,13 +139,16 @@ $_title-type-scale: subtitle2;
       max-height: $_max-height;
       box-sizing: border-box;
       overflow: hidden;
-      transform: scale(0.8);
       text-align: center;
+      transform: scale(0.8);
       opacity: 0;
+      will-change: transform, opacity;
       outline: 1px solid transparent;
     }
 
     .mdc-tooltip--rich & {
+      @include elevation-mixins.overlay-dimensions(100%, $query: $query);
+      @include elevation-mixins.elevation(2, $query: $query);
       @include feature-targeting.targets($feat-structure) {
         align-items: flex-start;
         display: flex;
@@ -154,6 +156,7 @@ $_title-type-scale: subtitle2;
         min-height: $_min-height;
         min-width: $_min-width;
         max-width: $_rich_max-width;
+        position: relative;
       }
     }
 
@@ -182,7 +185,7 @@ $_title-type-scale: subtitle2;
     }
 
     .mdc-tooltip__title {
-      @include typography.text-baseline($top: 20px, $query: $query);
+      @include typography.text-baseline($top: 28px, $query: $query);
       @include typography.typography(
         $_title-type-scale,
         $exclude-props: (line-height),
@@ -202,6 +205,12 @@ $_title-type-scale: subtitle2;
       );
       @include feature-targeting.targets($feat-structure) {
         margin: 0 $_content-margin-x 16px $_content-margin-x;
+        /* @noflip */
+        text-align: left;
+        @include rtl.rtl {
+          /* @noflip */
+          text-align: right;
+        }
       }
     }
 

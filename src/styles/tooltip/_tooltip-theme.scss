@@ -108,8 +108,13 @@ $z-index: 2;
   }
 }
 
-// Sets the color of the rich tooltip text.
-// @param {Color | String} $color
+// Sets the color of the text for the content inside a rich tooltip.
+// @param {Color | String} $title-color The color for the title of rich
+//   tooltips.
+// @param {Color | String} $content-color The color for the text in the content
+//   of rich tooltips.
+// @param {Color | String} $content-link-color The color for a link in the
+//   content of rich tooltips.
 @mixin rich-text-ink-color(
   $title-color,
   $content-color,
@@ -139,6 +144,19 @@ $z-index: 2;
   .mdc-tooltip__surface {
     @include feature-targeting.targets($feat-color) {
       @include theme.property(background-color, $color);
+    }
+  }
+}
+
+// Sets the fill/surface color of the rich tooltip.
+// @param {Color | String} $color
+@mixin rich-fill-color($color, $query: feature-targeting.all()) {
+  $feat-color: feature-targeting.create-target($query, color);
+  &.mdc-tooltip--rich {
+    .mdc-tooltip__surface {
+      @include feature-targeting.targets($feat-color) {
+        @include theme.property(background-color, $color);
+      }
     }
   }
 }

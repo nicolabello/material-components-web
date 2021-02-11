@@ -25,14 +25,23 @@
 
 $light-theme: (
   container-color: transparent,
+  container-hover-color: null,
+  container-focus-color: null,
+  container-pressed-color: null,
   container-disabled-color: transparent,
-  label-color: primary,
-  label-disabled-color: button-shared-theme.$disabled-ink-color,
+  density: button-shared-theme.$density-scale,
   icon-color: null,
+  icon-hover-color: null,
+  icon-focus-color: null,
+  icon-pressed-color: null,
   icon-disabled-color: null,
+  label-color: primary,
+  label-hover-color: null,
+  label-focus-color: null,
+  label-pressed-color: null,
+  label-disabled-color: button-shared-theme.$disabled-ink-color,
   ripple-color: primary,
   ripple-opacity: null,
-  density: button-shared-theme.$density-scale,
   shape: button-shared-theme.$shape-radius,
 );
 

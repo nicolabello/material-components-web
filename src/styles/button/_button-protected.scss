@@ -27,37 +27,29 @@
 @use './../elevation/mixins' as elevation-mixins;
 @use './../feature-targeting/feature-targeting';
 @use './button-base';
+@use './button-protected-theme';
 @use './button-shared-theme';
 
-@mixin styles($query: feature-targeting.all()) {
+@mixin styles(
+  $theme: button-protected-theme.$light-theme,
+  $query: feature-targeting.all()
+) {
   @include button-base.static-styles($query: $query);
   @include static-styles($query: $query);
-  @include theme-styles($query: $query);
+  @include theme-styles($theme, $query: $query);
 }
 
-@mixin theme-styles($query: feature-targeting.all()) {
+@mixin theme-styles(
+  $theme: button-protected-theme.$light-theme,
+  $query: feature-targeting.all()
+) {
   .mdc-button--raised {
-    // TODO: move into theme config.
+    // TODO(b/179402677): move into theme config.
     @include button-shared-theme.horizontal-padding(
       button-shared-theme.$contained-horizontal-padding,
       $query
     );
-    // TODO(b/175614964): Replace with map that nulls out default ripple values
-    // when theme mixin is implemented.
-    @include button-shared-theme.container-fill-color(primary, $query);
-    @include button-shared-theme.ink-color(on-primary, $query);
-    @include button-shared-theme.disabled-container-fill-color(
-      button-shared-theme.$disabled-container-color,
-      $query
-    );
-    @include button-shared-theme.disabled-ink-color(
-      button-shared-theme.$disabled-ink-color,
-      $query
-    );
-    @include button-shared-theme.ripple-states(
-      $color: on-primary,
-      $query: $query
-    );
+    @include button-protected-theme.theme($theme, $query: $query);
   }
 }
 

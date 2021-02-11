@@ -23,20 +23,27 @@
 // stylelint-disable selector-class-pattern --
 // Selector '.mdc-*' should only be used in this project.
 
+@use 'sass:map';
 @use './../feature-targeting/feature-targeting';
 @use './button-base';
 @use './button-outlined-theme';
 @use './button-shared-theme';
 
-@mixin styles($query: feature-targeting.all()) {
+@mixin styles(
+  $theme: button-outlined-theme.$light-theme,
+  $query: feature-targeting.all()
+) {
   @include button-base.static-styles($query: $query);
   @include static-styles($query: $query);
-  @include theme-styles($query: $query);
+  @include theme-styles($theme, $query: $query);
 }
 
-@mixin theme-styles($query: feature-targeting.all()) {
+@mixin theme-styles(
+  $theme: button-outlined-theme.$light-theme,
+  $query: feature-targeting.all()
+) {
   .mdc-button--outlined {
-    @include _theme-styles($query: $query);
+    @include _theme-styles($theme, $query: $query);
   }
 }
 
@@ -47,24 +54,19 @@
 }
 
 @mixin deprecated-theme-styles-without-ripple($query: feature-targeting.all()) {
-  // TODO(b/175614964): Replace stub when theme mixin is implemented.
-  @include theme-styles($query: $query);
+  .mdc-button--outlined {
+    $theme: map.merge(
+      button-outlined-theme.$light-theme,
+      (
+        ripple-color: null,
+      )
+    );
+    @include _theme-styles($theme, $query: $query);
+  }
 }
 
-@mixin _theme-styles($query: feature-targeting.all()) {
-  // TODO(b/175614964): Call theme mixin
-  @include button-outlined-theme.outline-width(
-    button-outlined-theme.$outlined-border-width,
-    $query: $query
-  );
-  @include button-outlined-theme.outline-color(
-    button-outlined-theme.$outline-color,
-    $query
-  );
-  @include button-outlined-theme.disabled-outline-color(
-    button-shared-theme.$disabled-container-color,
-    $query
-  );
+@mixin _theme-styles($theme, $query: feature-targeting.all()) {
+  @include button-outlined-theme.theme($theme, $query: $query);
 }
 
 @mixin _static-styles($query: feature-targeting.all()) {
@@ -77,7 +79,7 @@
 
 @mixin outlined($query: feature-targeting.all()) {
   @include _static-styles($query: $query);
-  @include _theme-styles($query: $query);
+  @include _theme-styles(button-outlined-theme.$light-theme, $query: $query);
 }
 
 /// @deprecated Private style mixin for partners; not available for public use.
