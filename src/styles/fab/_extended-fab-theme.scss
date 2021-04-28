@@ -23,8 +23,6 @@
 
 @use './../animation/functions' as animation-functions;
 @use './../elevation/elevation-theme';
-@use './../elevation/mixins' as elevation-mixins;
-@use './../elevation/variables' as elevation-variables;
 @use './../feature-targeting/feature-targeting';
 @use './../dom/mixins' as dom-mixins;
 @use './../ripple/ripple';

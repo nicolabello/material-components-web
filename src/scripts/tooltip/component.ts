@@ -240,7 +240,7 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
         this.anchorElem?.addEventListener(evt, handler);
       },
       deregisterAnchorEventHandler: (evt, handler) => {
-        this.anchorElem?.addEventListener(evt, handler);
+        this.anchorElem?.removeEventListener(evt, handler);
       },
       registerDocumentEventHandler: (evt, handler) => {
         document.body.addEventListener(evt, handler);
@@ -257,14 +257,13 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       notifyHidden: () => {
         this.emit(events.HIDDEN, {});
       },
-      getTooltipCaretSize: () => {
+      getTooltipCaretBoundingRect: () => {
         const caret = this.root.querySelector<HTMLElement>(
             `.${CssClasses.TOOLTIP_CARET_TOP}`);
         if (!caret) {
           return null;
         }
-
-        return {width: caret.offsetWidth, height: caret.offsetHeight};
+        return caret.getBoundingClientRect();
       },
       setTooltipCaretStyle: (propertyName, value) => {
         const topCaret = this.root.querySelector<HTMLElement>(
