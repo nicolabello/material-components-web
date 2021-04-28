@@ -22,10 +22,10 @@
  */
 
 import {MDCComponent} from './../base/component';
-import {SpecificEventListener} from './../base/types';
+import {EventType, SpecificEventListener} from './../base/types';
 
 import {MDCTooltipAdapter} from './adapter';
-import {AnchorBoundaryType, CssClasses, events, XPosition, YPosition} from './constants';
+import {AnchorBoundaryType, CssClasses, events, PositionWithCaret, XPosition, YPosition} from './constants';
 import {MDCTooltipFoundation} from './foundation';
 
 export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
@@ -33,16 +33,17 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
     return new MDCTooltip(root);
   }
 
-  private anchorElem!: HTMLElement;        // assigned in initialize
+  private anchorElem!: HTMLElement;       // assigned in initialize
   private isTooltipRich!: boolean;        // assigned in initialSyncWithDOM
   private isTooltipPersistent!: boolean;  // assigned in initialSyncWithDOM
 
   private handleMouseEnter!: SpecificEventListener<'mouseenter'>;
   private handleFocus!: SpecificEventListener<'focus'>;
   private handleMouseLeave!: SpecificEventListener<'mouseleave'>;
-  private handleBlur!: SpecificEventListener<'blur'>;
   private handleTransitionEnd!: SpecificEventListener<'transitionend'>;
   private handleClick!: SpecificEventListener<'click'>;
+  private handleTouchstart!: SpecificEventListener<'touchstart'>;
+  private handleTouchend!: SpecificEventListener<'touchend'>;
 
   initialize() {
     const tooltipId = this.root.getAttribute('id');
@@ -51,11 +52,12 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
     }
 
     const anchorElem = document.querySelector<HTMLElement>(
-                           `[aria-describedby="${tooltipId}"]`) ||
-        document.querySelector<HTMLElement>(`[data-tooltip-id="${tooltipId}"]`);
+                           `[data-tooltip-id="${tooltipId}"]`) ||
+        document.querySelector<HTMLElement>(
+            `[aria-describedby="${tooltipId}"]`);
     if (!anchorElem) {
       throw new Error(
-          'MDCTooltip: Tooltip component requires an anchor element annotated with [aria-describedby] or [data-tooltip-id] anchor element.');
+          'MDCTooltip: Tooltip component requires an anchor element annotated with [aria-describedby] or [data-tooltip-id].');
     }
     this.anchorElem = anchorElem;
   }
@@ -76,10 +78,6 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       this.foundation.handleAnchorMouseLeave();
     };
 
-    this.handleBlur = (evt) => {
-      this.foundation.handleAnchorBlur(evt);
-    };
-
     this.handleTransitionEnd = () => {
       this.foundation.handleTransitionEnd();
     };
@@ -88,7 +86,14 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       this.foundation.handleAnchorClick();
     };
 
-    this.anchorElem.addEventListener('blur', this.handleBlur);
+    this.handleTouchstart = () => {
+      this.foundation.handleAnchorTouchstart();
+    };
+
+    this.handleTouchend = () => {
+      this.foundation.handleAnchorTouchend();
+    };
+
     if (this.isTooltipRich && this.isTooltipPersistent) {
       this.anchorElem.addEventListener('click', this.handleClick);
     } else {
@@ -96,6 +101,8 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       // TODO(b/157075286): Listening for a 'focus' event is too broad.
       this.anchorElem.addEventListener('focus', this.handleFocus);
       this.anchorElem.addEventListener('mouseleave', this.handleMouseLeave);
+      this.anchorElem.addEventListener('touchstart', this.handleTouchstart);
+      this.anchorElem.addEventListener('touchend', this.handleTouchend);
     }
 
     this.listen('transitionend', this.handleTransitionEnd);
@@ -103,7 +110,6 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
 
   destroy() {
     if (this.anchorElem) {
-      this.anchorElem.removeEventListener('blur', this.handleBlur);
       if (this.isTooltipRich && this.isTooltipPersistent) {
         this.anchorElem.removeEventListener('click', this.handleClick);
       } else {
@@ -112,6 +118,9 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
         this.anchorElem.removeEventListener('focus', this.handleFocus);
         this.anchorElem.removeEventListener(
             'mouseleave', this.handleMouseLeave);
+        this.anchorElem.removeEventListener(
+            'touchstart', this.handleTouchstart);
+        this.anchorElem.removeEventListener('touchend', this.handleTouchend);
       }
     }
 
@@ -119,7 +128,11 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
     super.destroy();
   }
 
-  setTooltipPosition(position: {xPos?: XPosition, yPos?: YPosition}) {
+  setTooltipPosition(position: {
+    xPos?: XPosition,
+    yPos?: YPosition,
+    withCaretPos?: PositionWithCaret
+  }) {
     this.foundation.setTooltipPosition(position);
   }
 
@@ -133,6 +146,29 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
 
   isShown() {
     this.foundation.isShown();
+  }
+
+  /**
+   * Method that allows user to specify additional elements that should have a
+   * scroll event listener attached to it. This should be used in instances
+   * where the anchor element is placed inside a scrollable container (that is
+   * not the body element), and will ensure that the tooltip will stay attached
+   * to the anchor on scroll.
+   */
+  attachScrollHandler(
+      addEventListenerFn: <K extends EventType>(
+          event: K, handler: SpecificEventListener<K>) => void) {
+    this.foundation.attachScrollHandler(addEventListenerFn);
+  }
+
+  /**
+   * Must be used in conjunction with #attachScrollHandler. Removes the scroll
+   * event handler from elements on the page.
+   */
+  removeScrollHandler(
+      removeEventHandlerFn: <K extends EventType>(
+          event: K, handler: SpecificEventListener<K>) => void) {
+    this.foundation.removeScrollHandler(removeEventHandlerFn);
   }
 
   getDefaultFoundation() {
@@ -200,6 +236,12 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
           this.root.removeEventListener(evt, handler);
         }
       },
+      registerAnchorEventHandler: (evt, handler) => {
+        this.anchorElem?.addEventListener(evt, handler);
+      },
+      deregisterAnchorEventHandler: (evt, handler) => {
+        this.anchorElem?.addEventListener(evt, handler);
+      },
       registerDocumentEventHandler: (evt, handler) => {
         document.body.addEventListener(evt, handler);
       },
@@ -214,6 +256,40 @@ export class MDCTooltip extends MDCComponent<MDCTooltipFoundation> {
       },
       notifyHidden: () => {
         this.emit(events.HIDDEN, {});
+      },
+      getTooltipCaretSize: () => {
+        const caret = this.root.querySelector<HTMLElement>(
+            `.${CssClasses.TOOLTIP_CARET_TOP}`);
+        if (!caret) {
+          return null;
+        }
+
+        return {width: caret.offsetWidth, height: caret.offsetHeight};
+      },
+      setTooltipCaretStyle: (propertyName, value) => {
+        const topCaret = this.root.querySelector<HTMLElement>(
+            `.${CssClasses.TOOLTIP_CARET_TOP}`);
+        const bottomCaret = this.root.querySelector<HTMLElement>(
+            `.${CssClasses.TOOLTIP_CARET_BOTTOM}`);
+
+        if (!topCaret || !bottomCaret) {
+          return;
+        }
+
+        topCaret.style.setProperty(propertyName, value);
+        bottomCaret.style.setProperty(propertyName, value);
+      },
+      clearTooltipCaretStyles: () => {
+        const topCaret = this.root.querySelector<HTMLElement>(
+            `.${CssClasses.TOOLTIP_CARET_TOP}`);
+        const bottomCaret = this.root.querySelector<HTMLElement>(
+            `.${CssClasses.TOOLTIP_CARET_BOTTOM}`);
+
+        if (!topCaret || !bottomCaret) {
+          return;
+        }
+        topCaret.removeAttribute('style');
+        bottomCaret.removeAttribute('style');
       },
     };
 

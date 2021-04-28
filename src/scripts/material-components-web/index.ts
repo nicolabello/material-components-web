@@ -25,7 +25,7 @@ import autoInit from './../auto-init/index';
 import * as banner from './../banner/index';
 import * as base from './../base/index';
 import * as checkbox from './../checkbox/index';
-import * as chips from './../chips/index';
+import * as chips from './../chips/deprecated/index';
 import * as circularProgress from './../circular-progress/index';
 import * as dataTable from './../data-table/index';
 import * as dialog from './../dialog/index';

@@ -52,7 +52,7 @@ export class FocusTrap {
     this.elFocusedBeforeTrapFocus =
         document.activeElement instanceof HTMLElement ? document.activeElement :
                                                         null;
-    this.wrapTabFocus(this.root, focusableEls);
+    this.wrapTabFocus(this.root);
 
     if (!this.options.skipInitialFocus) {
       this.focusInitialElement(focusableEls, this.options.initialFocusEl);
@@ -69,7 +69,7 @@ export class FocusTrap {
           sentinelEl.parentElement!.removeChild(sentinelEl);
         });
 
-    if (this.elFocusedBeforeTrapFocus) {
+    if (!this.options.skipRestoreFocus && this.elFocusedBeforeTrapFocus) {
       this.elFocusedBeforeTrapFocus.focus();
     }
   }
@@ -81,16 +81,18 @@ export class FocusTrap {
    * children elements of the tabbable region, ensuring that focus is trapped
    * within that region.
    */
-  private wrapTabFocus(el: HTMLElement, focusableEls: HTMLElement[]) {
+  private wrapTabFocus(el: HTMLElement) {
     const sentinelStart = this.createSentinel();
     const sentinelEnd = this.createSentinel();
 
     sentinelStart.addEventListener('focus', () => {
+      const focusableEls = this.getFocusableElements(el);
       if (focusableEls.length > 0) {
         focusableEls[focusableEls.length - 1].focus();
       }
     });
     sentinelEnd.addEventListener('focus', () => {
+      const focusableEls = this.getFocusableElements(el);
       if (focusableEls.length > 0) {
         focusableEls[0].focus();
       }
@@ -157,4 +159,8 @@ export interface FocusOptions {
   // By default, focus is set on the first focusable child element of the root.
   // This is useful if the caller wants to handle setting initial focus.
   skipInitialFocus?: boolean;
+
+  // Whether to restore focus on the previously focused element when releasing
+  // focus. This is useful if the caller wants to handle restoring focus.
+  skipRestoreFocus?: boolean;
 }

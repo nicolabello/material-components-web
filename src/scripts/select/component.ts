@@ -225,12 +225,21 @@ export class MDCSelect extends MDCComponent<MDCSelectFoundation> {
     this.foundation.setValue(value);
   }
 
+  setValue(value: string, skipNotify = false) {
+    this.foundation.setValue(value, skipNotify);
+  }
+
   get selectedIndex(): number {
     return this.foundation.getSelectedIndex();
   }
 
   set selectedIndex(selectedIndex: number) {
-    this.foundation.setSelectedIndex(selectedIndex, /** closeMenu */ true);
+    this.foundation.setSelectedIndex(selectedIndex, /* closeMenu */ true);
+  }
+
+  setSelectedIndex(selectedIndex: number, skipNotify = false) {
+    this.foundation.setSelectedIndex(
+        selectedIndex, /* closeMenu */ true, skipNotify);
   }
 
   get disabled(): boolean {
@@ -447,12 +456,13 @@ export class MDCSelect extends MDCComponent<MDCSelectFoundation> {
         this.lineRipple && this.lineRipple.deactivate();
       },
       notifyChange: (value: string) => {
-        const index = this.selectedIndex;
-        this.emit<MDCSelectEventDetail>(strings.CHANGE_EVENT, {value, index}, true /* shouldBubble  */);
-
         if (this.hiddenInput) {
           this.hiddenInput.value = value;
         }
+
+        const index = this.selectedIndex;
+        this.emit<MDCSelectEventDetail>(
+            strings.CHANGE_EVENT, {value, index}, true /* shouldBubble  */);
       },
     };
     // tslint:enable:object-literal-sort-keys

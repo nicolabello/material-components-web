@@ -24,11 +24,11 @@
 import {AnimationFrame} from './../animation/animationframe';
 import {getCorrectPropertyName} from './../animation/util';
 import {MDCFoundation} from './../base/foundation';
-import {SpecificEventListener} from './../base/types';
+import {EventType, SpecificEventListener} from './../base/types';
 import {KEY, normalizeKey} from './../dom/keyboard';
 
 import {MDCTooltipAdapter} from './adapter';
-import {AnchorBoundaryType, attributes, CssClasses, numbers, strings, XPosition, YPosition} from './constants';
+import {AnchorBoundaryType, attributes, CssClasses, numbers, PositionWithCaret, strings, XPosition, XPositionWithCaret, YPosition, YPositionWithCaret} from './constants';
 import {ShowTooltipOptions} from './types';
 
 const {
@@ -74,21 +74,28 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
       focusAnchorElement: () => undefined,
       registerEventHandler: () => undefined,
       deregisterEventHandler: () => undefined,
+      registerAnchorEventHandler: () => undefined,
+      deregisterAnchorEventHandler: () => undefined,
       registerDocumentEventHandler: () => undefined,
       deregisterDocumentEventHandler: () => undefined,
       registerWindowEventHandler: () => undefined,
       deregisterWindowEventHandler: () => undefined,
       notifyHidden: () => undefined,
+      getTooltipCaretSize: () => null,
+      setTooltipCaretStyle: () => undefined,
+      clearTooltipCaretStyles: () => undefined,
     };
   }
 
   private interactiveTooltip!: boolean;  // assigned in init()
   private richTooltip!: boolean;         // assigned in init()
   private persistentTooltip!: boolean;   // assigned in init()
+  private hasCaret!: boolean;            // assigned in init()
   private tooltipShown = false;
   private anchorGap = numbers.BOUNDED_ANCHOR_GAP;
   private xTooltipPos = XPosition.DETECTED;
   private yTooltipPos = YPosition.DETECTED;
+  private tooltipPositionWithCaret = PositionWithCaret.DETECTED;
   // Minimum threshold distance needed between the tooltip and the viewport.
   private readonly minViewportTooltipThreshold =
       numbers.MIN_VIEWPORT_TOOLTIP_THRESHOLD;
@@ -101,6 +108,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   private hideTimeout: number|null = null;
   private showTimeout: number|null = null;
   private readonly animFrame: AnimationFrame;
+  private readonly anchorBlurHandler: SpecificEventListener<'blur'>;
   private readonly documentClickHandler: SpecificEventListener<'click'>;
   private readonly documentKeydownHandler: SpecificEventListener<'keydown'>;
   private readonly richTooltipMouseEnterHandler:
@@ -112,9 +120,16 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   private readonly windowScrollHandler: SpecificEventListener<'scroll'>;
   private readonly windowResizeHandler: SpecificEventListener<'resize'>;
 
+  private readonly addAncestorScrollEventListeners = new Array<() => void>();
+  private readonly removeAncestorScrollEventListeners = new Array<() => void>();
+
   constructor(adapter?: Partial<MDCTooltipAdapter>) {
     super({...MDCTooltipFoundation.defaultAdapter, ...adapter});
     this.animFrame = new AnimationFrame();
+
+    this.anchorBlurHandler = (evt) => {
+      this.handleAnchorBlur(evt);
+    };
 
     this.documentClickHandler = (evt) => {
       this.handleDocumentClick(evt);
@@ -152,6 +167,8 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.interactiveTooltip =
         !!this.adapter.getAnchorAttribute(attributes.ARIA_EXPANDED) &&
         this.adapter.getAnchorAttribute(attributes.ARIA_HASPOPUP) === 'dialog';
+    this.hasCaret = this.richTooltip &&
+        this.adapter.getAttribute(attributes.HAS_CARET) === 'true';
   }
 
   isShown() {
@@ -184,6 +201,31 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     }
   }
 
+  handleAnchorTouchstart() {
+    this.showTimeout = setTimeout(() => {
+      this.show();
+    }, this.showDelayMs);
+    // Prevent a context menu from appearing if user is long-pressing on a
+    // tooltip anchor.
+    this.adapter.registerWindowEventHandler(
+        'contextmenu', this.preventContextMenuOnLongTouch);
+  }
+
+  private preventContextMenuOnLongTouch(evt: MouseEvent) {
+    evt.preventDefault();
+  }
+
+  handleAnchorTouchend() {
+    this.clearShowTimeout();
+
+    // Only remove the 'contextmenu' listener if the tooltip is not shown. When
+    // the tooltip *is* shown, listener is removed in the close method.
+    if (!this.isShown()) {
+      this.adapter.deregisterWindowEventHandler(
+          'contextmenu', this.preventContextMenuOnLongTouch);
+    }
+  }
+
   handleAnchorFocus(evt: FocusEvent) {
     // TODO(b/157075286): Need to add some way to distinguish keyboard
     // navigation focus events from other focus events, and only show the
@@ -207,20 +249,6 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.hideTimeout = setTimeout(() => {
       this.hide();
     }, this.hideDelayMs);
-  }
-
-  handleAnchorBlur(evt: FocusEvent) {
-    if (this.richTooltip) {
-      const tooltipContainsRelatedTargetElement =
-          evt.relatedTarget instanceof HTMLElement &&
-          this.adapter.tooltipContainsElement(evt.relatedTarget);
-      // If focus changed to the tooltip element, don't hide the tooltip.
-      if (tooltipContainsRelatedTargetElement) {
-        return;
-      }
-    }
-    // Hide tooltip immediately on focus change.
-    this.hide();
   }
 
   handleAnchorClick() {
@@ -263,6 +291,20 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
       }
       this.hide();
     }
+  }
+
+  private handleAnchorBlur(evt: FocusEvent) {
+    if (this.richTooltip) {
+      const tooltipContainsRelatedTargetElement =
+          evt.relatedTarget instanceof HTMLElement &&
+          this.adapter.tooltipContainsElement(evt.relatedTarget);
+      // If focus changed to the tooltip element, don't hide the tooltip.
+      if (tooltipContainsRelatedTargetElement) {
+        return;
+      }
+    }
+    // Hide tooltip immediately on focus change.
+    this.hide();
   }
 
   private handleRichTooltipMouseEnter() {
@@ -337,6 +379,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.parentRect = this.adapter.getParentBoundingRect();
     this.richTooltip ? this.positionRichTooltip() : this.positionPlainTooltip();
 
+    this.adapter.registerAnchorEventHandler('blur', this.anchorBlurHandler);
     this.adapter.registerDocumentEventHandler(
         'click', this.documentClickHandler);
     this.adapter.registerDocumentEventHandler(
@@ -344,6 +387,10 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
 
     this.adapter.registerWindowEventHandler('scroll', this.windowScrollHandler);
     this.adapter.registerWindowEventHandler('resize', this.windowResizeHandler);
+    // Register any additional scroll handlers
+    for (const fn of this.addAncestorScrollEventListeners) {
+      fn();
+    }
 
     this.frameId = requestAnimationFrame(() => {
       this.clearAllAnimationClasses();
@@ -384,6 +431,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.adapter.addClass(HIDE_TRANSITION);
     this.adapter.removeClass(SHOWN);
 
+    this.adapter.deregisterAnchorEventHandler('blur', this.anchorBlurHandler);
     this.adapter.deregisterDocumentEventHandler(
         'click', this.documentClickHandler);
     this.adapter.deregisterDocumentEventHandler(
@@ -392,6 +440,13 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
         'scroll', this.windowScrollHandler);
     this.adapter.deregisterWindowEventHandler(
         'resize', this.windowResizeHandler);
+    this.adapter.deregisterWindowEventHandler(
+        'contextmenu', this.preventContextMenuOnLongTouch);
+
+    // Deregister any additional scroll handlers
+    for (const fn of this.removeAncestorScrollEventListeners) {
+      fn();
+    }
   }
 
   handleTransitionEnd() {
@@ -416,8 +471,17 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     this.adapter.removeClass(HIDE_TRANSITION);
   }
 
-  setTooltipPosition(position: {xPos?: XPosition, yPos?: YPosition}) {
-    const {xPos, yPos} = position;
+  setTooltipPosition(position: {
+    xPos?: XPosition,
+    yPos?: YPosition,
+    withCaretPos?: PositionWithCaret
+  }) {
+    const {xPos, yPos, withCaretPos} = position;
+    if (this.hasCaret && withCaretPos) {
+      this.tooltipPositionWithCaret = withCaretPos;
+      return;
+    }
+
     if (xPos) {
       this.xTooltipPos = xPos;
     }
@@ -477,7 +541,8 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     // container. We set the width of the tooltip to prevent this.
     this.adapter.setStyleProperty('width', width);
 
-    const {top, yTransformOrigin, left, xTransformOrigin} =
+    const {top, yTransformOrigin, left, xTransformOrigin} = this.hasCaret ?
+        this.calculateTooltipWithCaretStyles(this.anchorRect) :
         this.calculateTooltipStyles(this.anchorRect);
 
     const transformProperty =
@@ -732,6 +797,103 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     return yPos + tooltipHeight <= viewportHeight && yPos >= 0;
   }
 
+  private calculateTooltipWithCaretStyles(anchorRect: ClientRect|null) {
+    const caretSize = this.adapter.getTooltipCaretSize();
+    if (!anchorRect || !caretSize) {
+      return {position: PositionWithCaret.DETECTED, top: 0, left: 0};
+    }
+
+    // The caret for the rich tooltip is created by rotating a square div 45deg
+    // and hiding half of it so it looks like a triangle. To determine the
+    // actual height and width of the visible caret, we have to calculate the
+    // length of the square's diagonal.
+    const caretWidth = caretSize.width * Math.sqrt(2);
+    const caretHeight = caretWidth / 2;
+    const tooltipSize = this.adapter.getTooltipSize();
+
+    const yOptions = this.calculateYWithCaretDistanceOptions(
+        anchorRect, tooltipSize.height, {caretWidth, caretHeight});
+    const xOptions = this.calculateXWithCaretDistanceOptions(
+        anchorRect, tooltipSize.width, {caretWidth, caretHeight});
+
+    const validOptions =
+        this.validateTooltipWithCaretDistances(yOptions, xOptions);
+    const {position, xDistance, yDistance} =
+        this.determineTooltipWithCaretDistance(validOptions);
+
+    // After determining the position of the tooltip relative to the anchor,
+    // place the caret in the corresponding position and retrieve the necessary
+    // x/y transform origins needed to properly animate the tooltip entrance.
+    const {yTransformOrigin, xTransformOrigin} =
+        this.setCaretPositionStyles(position);
+
+    return {
+      yTransformOrigin,
+      xTransformOrigin,
+      top: yDistance,
+      left: xDistance
+    };
+  }
+
+  private calculateXWithCaretDistanceOptions(
+      anchorRect: ClientRect, tooltipWidth: number,
+      caretSize: {caretHeight: number, caretWidth: number}):
+      Map<XPositionWithCaret, number> {
+    const {caretWidth, caretHeight} = caretSize;
+    const isLTR = !this.adapter.isRTL();
+    const anchorMidpoint = anchorRect.left + anchorRect.width / 2;
+
+    const sideLeftAligned =
+        anchorRect.left - (tooltipWidth + this.anchorGap + caretHeight);
+    const sideRightAligned = anchorRect.right + this.anchorGap + caretHeight;
+    const sideStartPos = isLTR ? sideLeftAligned : sideRightAligned;
+    const sideEndPos = isLTR ? sideRightAligned : sideLeftAligned;
+
+    const verticalLeftAligned =
+        anchorMidpoint - (numbers.CARET_INDENTATION + caretWidth / 2);
+    const verticalRightAligned = anchorMidpoint -
+        (tooltipWidth - numbers.CARET_INDENTATION - caretWidth / 2);
+    const verticalStartPos = isLTR ? verticalLeftAligned : verticalRightAligned;
+    const verticalEndPos = isLTR ? verticalRightAligned : verticalLeftAligned;
+    const verticalCenterPos = anchorMidpoint - tooltipWidth / 2;
+
+    const possiblePositionsMap = new Map([
+      [XPositionWithCaret.START, verticalStartPos],
+      [XPositionWithCaret.CENTER, verticalCenterPos],
+      [XPositionWithCaret.END, verticalEndPos],
+      [XPositionWithCaret.SIDE_END, sideEndPos],
+      [XPositionWithCaret.SIDE_START, sideStartPos],
+    ]);
+    return possiblePositionsMap;
+  }
+
+  private calculateYWithCaretDistanceOptions(
+      anchorRect: ClientRect, tooltipHeight: number,
+      caretSize: {caretHeight: number, caretWidth: number}):
+      Map<YPositionWithCaret, number> {
+    const {caretWidth, caretHeight} = caretSize;
+    const anchorMidpoint = anchorRect.top + anchorRect.height / 2;
+
+    const belowYPos = anchorRect.bottom + this.anchorGap + caretHeight;
+    const aboveYPos =
+        anchorRect.top - (this.anchorGap + tooltipHeight + caretHeight);
+    const sideTopYPos =
+        anchorMidpoint - (numbers.CARET_INDENTATION + caretWidth / 2);
+    const sideCenterYPos = anchorMidpoint - (tooltipHeight / 2);
+    const sideBottomYPos = anchorMidpoint -
+        (tooltipHeight - numbers.CARET_INDENTATION - caretWidth / 2);
+
+    const possiblePositionsMap = new Map([
+      [YPositionWithCaret.ABOVE, aboveYPos],
+      [YPositionWithCaret.BELOW, belowYPos],
+      [YPositionWithCaret.SIDE_TOP, sideTopYPos],
+      [YPositionWithCaret.SIDE_CENTER, sideCenterYPos],
+      [YPositionWithCaret.SIDE_BOTTOM, sideBottomYPos],
+    ]);
+
+    return possiblePositionsMap;
+  }
+
   private repositionTooltipOnAnchorMove() {
     const newAnchorRect = this.adapter.getAnchorBoundingRect();
     if (!newAnchorRect || !this.anchorRect) return;
@@ -744,6 +906,331 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
       this.parentRect = this.adapter.getParentBoundingRect();
       this.richTooltip ? this.positionRichTooltip() :
                          this.positionPlainTooltip();
+    }
+  }
+
+  /**
+   * Given a list of x/y position options for a rich tooltip with caret, checks
+   * if valid x/y combinations of these position options are either within the
+   * viewport threshold, or simply within the viewport. Returns a map with the
+   * valid x/y position combinations that all either honor the viewport
+   * threshold or are simply inside within the viewport.
+   */
+  private validateTooltipWithCaretDistances(
+      yOptions: Map<YPositionWithCaret, number>,
+      xOptions: Map<XPositionWithCaret, number>) {
+    const posWithinThreshold =
+        new Map<PositionWithCaret, {xDistance: number, yDistance: number}>();
+    const posWithinViewport =
+        new Map<PositionWithCaret, {xDistance: number, yDistance: number}>();
+
+    // If a tooltip has a caret, not all combinations of YPositionWithCarets and
+    // XPositionWithCarets are possible. Because of this we only check the
+    // validity of a given XPositionWithCaret if a potential corresponding
+    // YPositionWithCaret is valid.
+    const validMappings = new Map([
+      [
+        YPositionWithCaret.ABOVE,
+        [
+          XPositionWithCaret.START, XPositionWithCaret.CENTER,
+          XPositionWithCaret.END
+        ]
+      ],
+      [
+        YPositionWithCaret.BELOW,
+        [
+          XPositionWithCaret.START, XPositionWithCaret.CENTER,
+          XPositionWithCaret.END
+        ]
+      ],
+      [
+        YPositionWithCaret.SIDE_TOP,
+        [XPositionWithCaret.SIDE_START, XPositionWithCaret.SIDE_END]
+      ],
+      [
+        YPositionWithCaret.SIDE_CENTER,
+        [XPositionWithCaret.SIDE_START, XPositionWithCaret.SIDE_END]
+      ],
+      [
+        YPositionWithCaret.SIDE_BOTTOM,
+        [XPositionWithCaret.SIDE_START, XPositionWithCaret.SIDE_END]
+      ],
+    ]);
+
+    for (const y of validMappings.keys()) {
+      const yDistance = yOptions.get(y)!;
+      if (this.yPositionHonorsViewportThreshold(yDistance)) {
+        for (const x of validMappings.get(y)!) {
+          const xDistance = xOptions.get(x)!;
+          if (this.positionHonorsViewportThreshold(xDistance)) {
+            const caretPositionName = this.caretPositionOptionsMapping(x, y);
+            posWithinThreshold.set(caretPositionName, {xDistance, yDistance});
+          }
+        }
+      } else if (this.yPositionDoesntCollideWithViewport(yDistance)) {
+        for (const x of validMappings.get(y)!) {
+          const xDistance = xOptions.get(x)!;
+          if (this.positionDoesntCollideWithViewport(xDistance)) {
+            const caretPositionName = this.caretPositionOptionsMapping(x, y);
+            posWithinViewport.set(caretPositionName, {xDistance, yDistance});
+          }
+        }
+      }
+    }
+
+    return posWithinThreshold.size ? posWithinThreshold : posWithinViewport;
+  }
+
+  /**
+   * Given a list of valid position options for a rich tooltip with caret,
+   * returns the option that should be used.
+   */
+  private determineTooltipWithCaretDistance(
+      options: Map<PositionWithCaret, {xDistance: number, yDistance: number}>):
+      {position: PositionWithCaret, xDistance: number, yDistance: number} {
+    if (options.has(this.tooltipPositionWithCaret)) {
+      const tooltipPos = options.get(this.tooltipPositionWithCaret)!;
+      return {
+        position: this.tooltipPositionWithCaret,
+        xDistance: tooltipPos.xDistance,
+        yDistance: tooltipPos.yDistance,
+      };
+    }
+
+    const orderPref = [
+      PositionWithCaret.ABOVE_START, PositionWithCaret.ABOVE_CENTER,
+      PositionWithCaret.ABOVE_END, PositionWithCaret.TOP_SIDE_START,
+      PositionWithCaret.CENTER_SIDE_START, PositionWithCaret.BOTTOM_SIDE_START,
+      PositionWithCaret.TOP_SIDE_END, PositionWithCaret.CENTER_SIDE_END,
+      PositionWithCaret.BOTTOM_SIDE_END, PositionWithCaret.BELOW_START,
+      PositionWithCaret.BELOW_CENTER, PositionWithCaret.BELOW_END
+    ];
+
+    const validPosition = orderPref.find((pos) => options.has(pos));
+    if (validPosition) {
+      const pos = options.get(validPosition)!;
+      return {
+        position: validPosition,
+        xDistance: pos.xDistance,
+        yDistance: pos.yDistance,
+      };
+    }
+
+    // TODO(b/182906431): Handle situation where there is no valid tooltip
+    // position from the provided map of options.
+    const backUp = options.keys().next().value;
+    return {
+      position: backUp,
+      xDistance: options.get(backUp)!.xDistance,
+      yDistance: options.get(backUp)!.yDistance,
+    };
+  }
+
+  /**
+   * Returns the corresponding PositionWithCaret enum for the proivded
+   * XPositionWithCaret and YPositionWithCaret enums. This mapping exists so our
+   * public API accepts only PositionWithCaret enums (as all combinations of
+   * XPositionWithCaret and YPositionWithCaret are not valid), but internally we
+   * can calculate the X and Y positions of a rich tooltip with caret
+   * separately.
+   */
+  private caretPositionOptionsMapping(
+      xPos: XPositionWithCaret, yPos: YPositionWithCaret): PositionWithCaret {
+    switch (yPos) {
+      case YPositionWithCaret.ABOVE:
+        if (xPos === XPositionWithCaret.START) {
+          return PositionWithCaret.ABOVE_START;
+        } else if (xPos === XPositionWithCaret.CENTER) {
+          return PositionWithCaret.ABOVE_CENTER;
+        } else if (xPos === XPositionWithCaret.END) {
+          return PositionWithCaret.ABOVE_END;
+        }
+        break;
+      case YPositionWithCaret.BELOW:
+        if (xPos === XPositionWithCaret.START) {
+          return PositionWithCaret.BELOW_START;
+        } else if (xPos === XPositionWithCaret.CENTER) {
+          return PositionWithCaret.BELOW_CENTER;
+        } else if (xPos === XPositionWithCaret.END) {
+          return PositionWithCaret.BELOW_END;
+        }
+        break;
+      case YPositionWithCaret.SIDE_TOP:
+        if (xPos === XPositionWithCaret.SIDE_START) {
+          return PositionWithCaret.TOP_SIDE_START;
+        } else if (xPos === XPositionWithCaret.SIDE_END) {
+          return PositionWithCaret.TOP_SIDE_END;
+        }
+        break;
+      case YPositionWithCaret.SIDE_CENTER:
+        if (xPos === XPositionWithCaret.SIDE_START) {
+          return PositionWithCaret.CENTER_SIDE_START;
+        } else if (xPos === XPositionWithCaret.SIDE_END) {
+          return PositionWithCaret.CENTER_SIDE_END;
+        }
+        break;
+      case YPositionWithCaret.SIDE_BOTTOM:
+        if (xPos === XPositionWithCaret.SIDE_START) {
+          return PositionWithCaret.BOTTOM_SIDE_START;
+        } else if (xPos === XPositionWithCaret.SIDE_END) {
+          return PositionWithCaret.BOTTOM_SIDE_END;
+        }
+        break;
+      default:
+        break;
+    }
+    throw new Error(
+        `MDCTooltipFoundation: Invalid caret position of ${xPos}, ${yPos}`);
+  }
+
+  /**
+   * Given a PositionWithCaret, applies the correct styles to the caret element
+   * so that it is positioned properly on the rich tooltip.
+   * Returns the x and y positions of the caret, to be used as the
+   * transform-origin on the tooltip itself for entrance animations.
+   */
+  private setCaretPositionStyles(position: PositionWithCaret) {
+    const values = this.calculateCaretPositionOnTooltip(position);
+    if (!values) {
+      return {yTransformOrigin: 0, xTransformOrigin: 0};
+    }
+    // Prior to setting the caret position styles, clear any previous styles
+    // set. This is necessary as all position options do not use the same
+    // properties (e.g. using 'left' or 'right') and so old style properties
+    // might not get overridden, causing misplaced carets.
+    this.adapter.clearTooltipCaretStyles();
+
+    this.adapter.setTooltipCaretStyle(values.yAlignment, values.yAxisPx);
+    this.adapter.setTooltipCaretStyle(values.xAlignment, values.xAxisPx);
+    this.adapter.setTooltipCaretStyle(
+        'transform', `rotate(${values.rotation})`);
+    this.adapter.setTooltipCaretStyle(
+        'transform-origin', `${values.yAlignment} ${values.xAlignment}`);
+    return {yTransformOrigin: values.yAxisPx, xTransformOrigin: values.xAxisPx};
+  }
+
+  /**
+   * Given a PositionWithCaret, determines the correct styles to position the
+   * caret properly on the rich tooltip.
+   */
+  private calculateCaretPositionOnTooltip(tooltipPos: PositionWithCaret) {
+    const isLTR = !this.adapter.isRTL();
+    const tooltipWidth = this.adapter.getComputedStyleProperty('width');
+    const tooltipHeight = this.adapter.getComputedStyleProperty('height');
+    const caretDimensions = this.adapter.getTooltipCaretSize();
+    if (!tooltipWidth || !tooltipHeight || !caretDimensions) {
+      return;
+    }
+    const caretDiagonal = caretDimensions.width * Math.sqrt(2);
+
+    const midpointWidth = `calc((${tooltipWidth} - ${caretDiagonal}px) / 2)`;
+    const midpointHeight = `calc((${tooltipHeight} - ${caretDiagonal}px) / 2)`;
+    const flushWithEdge = '0';
+    const indentedFromEdge = `${numbers.CARET_INDENTATION}px`;
+    const positiveRot = '45deg';
+    const negativeRot = '-45deg';
+
+    switch (tooltipPos) {
+      case PositionWithCaret.BELOW_CENTER:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: strings.LEFT,
+          yAxisPx: flushWithEdge,
+          xAxisPx: midpointWidth,
+          rotation: negativeRot
+        };
+      case PositionWithCaret.BELOW_END:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: isLTR ? strings.RIGHT : strings.LEFT,
+          yAxisPx: flushWithEdge,
+          xAxisPx: indentedFromEdge,
+          rotation: isLTR ? positiveRot : negativeRot
+        };
+      case PositionWithCaret.BELOW_START:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: isLTR ? strings.LEFT : strings.RIGHT,
+          yAxisPx: flushWithEdge,
+          xAxisPx: indentedFromEdge,
+          rotation: isLTR ? negativeRot : positiveRot
+        };
+
+      case PositionWithCaret.TOP_SIDE_END:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: isLTR ? strings.LEFT : strings.RIGHT,
+          yAxisPx: indentedFromEdge,
+          xAxisPx: flushWithEdge,
+          rotation: isLTR ? positiveRot : negativeRot
+        };
+      case PositionWithCaret.CENTER_SIDE_END:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: isLTR ? strings.LEFT : strings.RIGHT,
+          yAxisPx: midpointHeight,
+          xAxisPx: flushWithEdge,
+          rotation: isLTR ? positiveRot : negativeRot
+        };
+      case PositionWithCaret.BOTTOM_SIDE_END:
+        return {
+          yAlignment: strings.BOTTOM,
+          xAlignment: isLTR ? strings.LEFT : strings.RIGHT,
+          yAxisPx: indentedFromEdge,
+          xAxisPx: flushWithEdge,
+          rotation: isLTR ? negativeRot : positiveRot
+        };
+
+      case PositionWithCaret.TOP_SIDE_START:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: isLTR ? strings.RIGHT : strings.LEFT,
+          yAxisPx: indentedFromEdge,
+          xAxisPx: flushWithEdge,
+          rotation: isLTR ? negativeRot : positiveRot
+        };
+      case PositionWithCaret.CENTER_SIDE_START:
+        return {
+          yAlignment: strings.TOP,
+          xAlignment: isLTR ? strings.RIGHT : strings.LEFT,
+          yAxisPx: midpointHeight,
+          xAxisPx: flushWithEdge,
+          rotation: isLTR ? negativeRot : positiveRot
+        };
+      case PositionWithCaret.BOTTOM_SIDE_START:
+        return {
+          yAlignment: strings.BOTTOM,
+          xAlignment: isLTR ? strings.RIGHT : strings.LEFT,
+          yAxisPx: indentedFromEdge,
+          xAxisPx: flushWithEdge,
+          rotation: isLTR ? positiveRot : negativeRot
+        };
+
+      case PositionWithCaret.ABOVE_CENTER:
+        return {
+          yAlignment: strings.BOTTOM,
+          xAlignment: strings.LEFT,
+          yAxisPx: flushWithEdge,
+          xAxisPx: midpointWidth,
+          rotation: positiveRot
+        };
+      case PositionWithCaret.ABOVE_END:
+        return {
+          yAlignment: strings.BOTTOM,
+          xAlignment: isLTR ? strings.RIGHT : strings.LEFT,
+          yAxisPx: flushWithEdge,
+          xAxisPx: indentedFromEdge,
+          rotation: isLTR ? negativeRot : positiveRot
+        };
+      default:
+      case PositionWithCaret.ABOVE_START:
+        return {
+          yAlignment: strings.BOTTOM,
+          xAlignment: isLTR ? strings.LEFT : strings.RIGHT,
+          yAxisPx: flushWithEdge,
+          xAxisPx: indentedFromEdge,
+          rotation: isLTR ? positiveRot : negativeRot
+        };
     }
   }
 
@@ -760,6 +1247,33 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
       this.hideTimeout = null;
     }
   }
+
+  /**
+   * Method that allows user to specify additional elements that should have a
+   * scroll event listener attached to it. This should be used in instances
+   * where the anchor element is placed inside a scrollable container, and will
+   * ensure that the tooltip will stay attached to the anchor on scroll.
+   */
+  attachScrollHandler(
+      addEventListenerFn: <K extends EventType>(
+          event: K, handler: SpecificEventListener<K>) => void) {
+    this.addAncestorScrollEventListeners.push(() => {
+      addEventListenerFn('scroll', this.windowScrollHandler);
+    });
+  }
+
+  /**
+   * Must be used in conjunction with #attachScrollHandler. Removes the scroll
+   * event handler from elements on the page.
+   */
+  removeScrollHandler(
+      removeEventHandlerFn: <K extends EventType>(
+          event: K, handler: SpecificEventListener<K>) => void) {
+    this.removeAncestorScrollEventListeners.push(() => {
+      removeEventHandlerFn('scroll', this.windowScrollHandler);
+    });
+  }
+
 
   destroy() {
     if (this.frameId) {
@@ -796,6 +1310,9 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
         'scroll', this.windowScrollHandler);
     this.adapter.deregisterWindowEventHandler(
         'resize', this.windowResizeHandler);
+    for (const fn of this.removeAncestorScrollEventListeners) {
+      fn();
+    }
 
     this.animFrame.cancelAll();
   }

@@ -83,6 +83,7 @@ function updateScripts(repoPath, mainFolder) {
 
     // Create index.ts
     fs.writeFileSync(`${mainFolder}/index.ts`, glob.sync(`${mainFolder}/**/component.ts`)
+        .filter(file => file.toLowerCase().indexOf('/deprecated/') < 0)
         .map(file => `export * from '${file.replace(mainFolder, '.').replace('.ts', '')}';`)
         .join('\n'));
 

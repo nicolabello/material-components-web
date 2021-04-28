@@ -30,6 +30,8 @@ enum CssClasses {
   HIDE_TRANSITION = 'mdc-tooltip--hide-transition',
   MULTILINE_TOOLTIP = 'mdc-tooltip--multiline',
   SURFACE = 'mdc-tooltip__surface',
+  TOOLTIP_CARET_TOP = 'mdc-tooltip__caret-surface-top',
+  TOOLTIP_CARET_BOTTOM = 'mdc-tooltip__caret-surface-bottom',
 }
 
 const numbers = {
@@ -42,12 +44,15 @@ const numbers = {
   MIN_HEIGHT: 24,
   MAX_WIDTH: 200,
   // LINT.ThenChange(_tooltip.scss:tooltip-dimensions)
+  CARET_INDENTATION: 24,
 };
 
 const attributes = {
   ARIA_EXPANDED: 'aria-expanded',
   ARIA_HASPOPUP: 'aria-haspopup',
   PERSISTENT: 'data-mdc-tooltip-persistent',
+  SCROLLABLE_ANCESTOR: 'tooltip-scrollable-ancestor',
+  HAS_CARET: 'data-mdc-tooltip-has-caret',
 };
 
 const events = {
@@ -88,6 +93,49 @@ const strings = {
   BOTTOM: 'bottom'
 };
 
+/**
+ * Enum for possible positions of a tooltip with caret (this specifies the
+ * positioning of the tooltip relative to the anchor -- the position of the
+ * caret will follow that of the tooltip). This can NOT be combined with the
+ * above X/YPosition options. Naming for the enums follows: (vertical
+ * placement)_(horizontal placement).
+ */
+enum PositionWithCaret {
+  DETECTED = 0,
+
+  ABOVE_START = 1,
+  ABOVE_CENTER = 2,
+  ABOVE_END = 3,
+
+  TOP_SIDE_START = 4,
+  CENTER_SIDE_START = 5,
+  BOTTOM_SIDE_START = 6,
+
+  TOP_SIDE_END = 7,
+  CENTER_SIDE_END = 8,
+  BOTTOM_SIDE_END = 9,
+
+  BELOW_START = 10,
+  BELOW_CENTER = 11,
+  BELOW_END = 12,
+}
+
+enum YPositionWithCaret {
+  ABOVE = 1,
+  BELOW = 2,
+  SIDE_TOP = 3,
+  SIDE_CENTER = 4,
+  SIDE_BOTTOM = 5,
+}
+
+enum XPositionWithCaret {
+  START = 1,
+  CENTER = 2,
+  END = 3,
+  SIDE_START = 4,
+  SIDE_END = 5,
+}
+
 export {
   CssClasses,
   numbers,
@@ -96,5 +144,8 @@ export {
   XPosition,
   AnchorBoundaryType,
   YPosition,
-  strings
+  strings,
+  PositionWithCaret,
+  YPositionWithCaret,
+  XPositionWithCaret
 };
