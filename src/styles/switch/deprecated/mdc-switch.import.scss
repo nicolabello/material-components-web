@@ -1,8 +1,10 @@
+// Must come first for configuration of deprecation
+@forward "mdc-switch";
+
 @forward "./../../density/variables" as mdc-density-*;
 @forward "./../../base/mixins" as mdc-base-*;
 @forward "./../../feature-targeting/variables" as mdc-feature-*;
 @forward "./../../feature-targeting/mixins" as mdc-feature-*;
-@forward "./../../theme/constants" as mdc-theme-*;
 @forward "./../../theme/variables" as mdc-theme-*;
 @forward "./../../animation/variables" as mdc-animation-*;
 @forward "./../../elevation/variables" as mdc-elevation-*;
@@ -26,4 +28,3 @@
 @forward "./../../animation/functions" as mdc-animation-*;
 @forward "./../../ripple/functions" as mdc-*;
 @forward "functions" as mdc-switch-*;
-@forward "mdc-switch";
