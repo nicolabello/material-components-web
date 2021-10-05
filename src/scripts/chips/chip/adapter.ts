@@ -21,8 +21,9 @@
  * THE SOFTWARE.
  */
 
-import {ActionType, FocusBehavior} from '../action/constants';
-import {Attributes, CssClasses, Events} from './constants';
+import {MDCChipActionFocusBehavior, MDCChipActionType} from '../action/constants';
+
+import {MDCChipAttributes, MDCChipCssClasses, MDCChipEvents} from './constants';
 
 /**
  * Defines the shape of the adapter expected by the foundation.
@@ -33,16 +34,16 @@ import {Attributes, CssClasses, Events} from './constants';
  */
 export interface MDCChipAdapter {
   /** Adds the given class to the root element. */
-  addClass(className: CssClasses): void;
+  addClass(className: MDCChipCssClasses): void;
 
   /** Emits the given event with the given detail. */
-  emitEvent<D extends object>(eventName: Events, eventDetail: D): void;
+  emitEvent<D extends object>(eventName: MDCChipEvents, eventDetail: D): void;
 
   /** Returns the child actions provided by the chip. */
-  getActions(): ActionType[];
+  getActions(): MDCChipActionType[];
 
   /** Returns the value for the given attribute, if it exists. */
-  getAttribute(attrName: Attributes): string|null;
+  getAttribute(attrName: MDCChipAttributes): string|null;
 
   /** Returns the ID of the root element. */
   getElementID(): string;
@@ -51,34 +52,35 @@ export interface MDCChipAdapter {
   getOffsetWidth(): number;
 
   /** Returns true if the root element has the given class. */
-  hasClass(className: CssClasses): boolean;
+  hasClass(className: MDCChipCssClasses): boolean;
 
   /** Proxies to the MDCChipAction#isSelectable method. */
-  isActionSelectable(action: ActionType): boolean;
+  isActionSelectable(action: MDCChipActionType): boolean;
 
   /** Proxies to the MDCChipAction#isSelected method. */
-  isActionSelected(action: ActionType): boolean;
+  isActionSelected(action: MDCChipActionType): boolean;
 
   /** Proxies to the MDCChipAction#isFocusable method. */
-  isActionFocusable(action: ActionType): boolean;
+  isActionFocusable(action: MDCChipActionType): boolean;
 
   /** Proxies to the MDCChipAction#isDisabled method. */
-  isActionDisabled(action: ActionType): boolean;
+  isActionDisabled(action: MDCChipActionType): boolean;
 
   /** Returns true if the text direction is right-to-left. */
   isRTL(): boolean;
 
   /** Removes the given class from the root element. */
-  removeClass(className: CssClasses): void;
+  removeClass(className: MDCChipCssClasses): void;
 
   /** Proxies to the MDCChipAction#setDisabled method. */
-  setActionDisabled(action: ActionType, isDisabled: boolean): void;
+  setActionDisabled(action: MDCChipActionType, isDisabled: boolean): void;
 
   /** Proxies to the MDCChipAction#setFocus method. */
-  setActionFocus(action: ActionType, behavior: FocusBehavior): void;
+  setActionFocus(
+      action: MDCChipActionType, behavior: MDCChipActionFocusBehavior): void;
 
   /** Proxies to the MDCChipAction#setSelected method. */
-  setActionSelected(action: ActionType, isSelected: boolean): void;
+  setActionSelected(action: MDCChipActionType, isSelected: boolean): void;
 
   /** Sets the style property to the given value. */
   setStyleProperty(property: string, value: string): void;

@@ -24,15 +24,15 @@
 import {MDCFoundation} from './../../base/foundation';
 import {KEY} from './../../dom/keyboard';
 
-import {ActionType, FocusBehavior} from '../action/constants';
-import {Animation} from '../chip/constants';
+import {MDCChipActionFocusBehavior, MDCChipActionType} from '../action/constants';
+import {MDCChipAnimation} from '../chip/constants';
 
 import {MDCChipSetAdapter} from './adapter';
-import {Attributes, Events} from './constants';
+import {MDCChipSetAttributes, MDCChipSetEvents} from './constants';
 import {ChipAnimationEvent, ChipInteractionEvent, ChipNavigationEvent, MDCChipSetInteractionEventDetail, MDCChipSetRemovalEventDetail, MDCChipSetSelectionEventDetail} from './types';
 
 interface FocusAction {
-  action: ActionType;
+  action: MDCChipActionType;
   index: number;
 }
 
@@ -45,7 +45,7 @@ enum Operator {
  * MDCChipSetFoundation provides a foundation for all chips.
  */
 export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
-  static get defaultAdapter(): MDCChipSetAdapter {
+  static override get defaultAdapter(): MDCChipSetAdapter {
     return {
       announceMessage: () => undefined,
       emitEvent: () => undefined,
@@ -78,7 +78,7 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
     } = detail;
     const index = this.adapter.getChipIndexById(chipID);
 
-    if (animation === Animation.EXIT && isComplete) {
+    if (animation === MDCChipAnimation.EXIT && isComplete) {
       if (removedAnnouncement) {
         this.adapter.announceMessage(removedAnnouncement);
       }
@@ -86,7 +86,7 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
       return;
     }
 
-    if (animation === Animation.ENTER && isComplete && addedAnnouncement) {
+    if (animation === MDCChipAnimation.ENTER && isComplete && addedAnnouncement) {
       this.adapter.announceMessage(addedAnnouncement);
       return;
     }
@@ -101,9 +101,9 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
       return;
     }
 
-    this.focusChip(index, source, FocusBehavior.FOCUSABLE);
+    this.focusChip(index, source, MDCChipActionFocusBehavior.FOCUSABLE);
     this.adapter.emitEvent<MDCChipSetInteractionEventDetail>(
-        Events.INTERACTION, {
+        MDCChipSetEvents.INTERACTION, {
           chipIndex: index,
           chipID,
         });
@@ -172,14 +172,15 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
   }
 
   /** Sets the selected state of the chip at the given index and action. */
-  setChipSelected(index: number, action: ActionType, isSelected: boolean) {
+  setChipSelected(
+      index: number, action: MDCChipActionType, isSelected: boolean) {
     if (this.adapter.isChipSelectableAtIndex(index, action)) {
       this.setSelection(index, action, isSelected);
     }
   }
 
   /** Returns the selected state of the chip at the given index and action. */
-  isChipSelected(index: number, action: ActionType): boolean {
+  isChipSelected(index: number, action: MDCChipActionType): boolean {
     return this.adapter.isChipSelectedAtIndex(index, action);
   }
 
@@ -187,30 +188,34 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
   removeChip(index: number) {
     // Early exit if the index is out of bounds
     if (index >= this.adapter.getChipCount() || index < 0) return;
-    this.adapter.startChipAnimationAtIndex(index, Animation.EXIT);
-    this.adapter.emitEvent<MDCChipSetRemovalEventDetail>(Events.REMOVAL, {
-      chipID: this.adapter.getChipIdAtIndex(index),
-      chipIndex: index,
-      isComplete: false,
-    });
+    this.adapter.startChipAnimationAtIndex(index, MDCChipAnimation.EXIT);
+    this.adapter.emitEvent<MDCChipSetRemovalEventDetail>(
+        MDCChipSetEvents.REMOVAL, {
+          chipID: this.adapter.getChipIdAtIndex(index),
+          chipIndex: index,
+          isComplete: false,
+        });
   }
 
   addChip(index: number) {
     // Early exit if the index is out of bounds
     if (index >= this.adapter.getChipCount() || index < 0) return;
-    this.adapter.startChipAnimationAtIndex(index, Animation.ENTER);
+    this.adapter.startChipAnimationAtIndex(index, MDCChipAnimation.ENTER);
   }
 
   /**
    * Increments to find the first focusable chip.
    */
-  private focusNextChipFrom(startIndex: number, targetAction?: ActionType) {
+  private focusNextChipFrom(
+      startIndex: number, targetAction?: MDCChipActionType) {
     const chipCount = this.adapter.getChipCount();
     for (let i = startIndex; i < chipCount; i++) {
       const focusableAction =
           this.getFocusableAction(i, Operator.INCREMENT, targetAction);
       if (focusableAction) {
-        this.focusChip(i, focusableAction, FocusBehavior.FOCUSABLE_AND_FOCUSED);
+        this.focusChip(
+            i, focusableAction,
+            MDCChipActionFocusBehavior.FOCUSABLE_AND_FOCUSED);
         return;
       }
     }
@@ -220,12 +225,15 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
    * Decrements to find the first focusable chip. Takes an optional target
    * action that can be used to focus the first matching focusable action.
    */
-  private focusPrevChipFrom(startIndex: number, targetAction?: ActionType) {
+  private focusPrevChipFrom(
+      startIndex: number, targetAction?: MDCChipActionType) {
     for (let i = startIndex; i > -1; i--) {
       const focusableAction =
           this.getFocusableAction(i, Operator.DECREMENT, targetAction);
       if (focusableAction) {
-        this.focusChip(i, focusableAction, FocusBehavior.FOCUSABLE_AND_FOCUSED);
+        this.focusChip(
+            i, focusableAction,
+            MDCChipActionFocusBehavior.FOCUSABLE_AND_FOCUSED);
         return;
       }
     }
@@ -233,7 +241,8 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
 
   /** Returns the appropriate focusable action, or null if none exist. */
   private getFocusableAction(
-      index: number, op: Operator, targetAction?: ActionType): ActionType|null {
+      index: number, op: Operator,
+      targetAction?: MDCChipActionType): MDCChipActionType|null {
     const actions = this.adapter.getChipActionsAtIndex(index);
     // Reverse the actions if decrementing
     if (op === Operator.DECREMENT) actions.reverse();
@@ -249,8 +258,8 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
    * Returs the first focusable action, regardless of type, or null if no
    * focusable actions exist.
    */
-  private getFirstFocusableAction(index: number, actions: ActionType[]):
-      ActionType|null {
+  private getFirstFocusableAction(index: number, actions: MDCChipActionType[]):
+      MDCChipActionType|null {
     for (const action of actions) {
       if (this.adapter.isChipFocusableAtIndex(index, action)) {
         return action;
@@ -265,8 +274,8 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
    * focusable action exists.
    */
   private getMatchingFocusableAction(
-      index: number, actions: ActionType[],
-      targetAction: ActionType): ActionType|null {
+      index: number, actions: MDCChipActionType[],
+      targetAction: MDCChipActionType): MDCChipActionType|null {
     let focusableAction = null;
     for (const action of actions) {
       if (this.adapter.isChipFocusableAtIndex(index, action)) {
@@ -281,7 +290,9 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
     return focusableAction;
   }
 
-  private focusChip(index: number, action: ActionType, focus: FocusBehavior) {
+  private focusChip(
+      index: number, action: MDCChipActionType,
+      focus: MDCChipActionFocusBehavior) {
     this.adapter.setChipFocusAtIndex(index, action, focus);
     const chipCount = this.adapter.getChipCount();
     for (let i = 0; i < chipCount; i++) {
@@ -290,23 +301,25 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
         // Skip the action and index provided since we set it above
         if (chipAction === action && i === index) continue;
         this.adapter.setChipFocusAtIndex(
-            i, chipAction, FocusBehavior.NOT_FOCUSABLE);
+            i, chipAction, MDCChipActionFocusBehavior.NOT_FOCUSABLE);
       }
     }
   }
 
   private supportsMultiSelect(): boolean {
-    return this.adapter.getAttribute(Attributes.ARIA_MULTISELECTABLE) ===
-        'true';
+    return this.adapter.getAttribute(
+               MDCChipSetAttributes.ARIA_MULTISELECTABLE) === 'true';
   }
 
-  private setSelection(index: number, action: ActionType, isSelected: boolean) {
+  private setSelection(
+      index: number, action: MDCChipActionType, isSelected: boolean) {
     this.adapter.setChipSelectedAtIndex(index, action, isSelected);
-    this.adapter.emitEvent<MDCChipSetSelectionEventDetail>(Events.SELECTION, {
-      chipID: this.adapter.getChipIdAtIndex(index),
-      chipIndex: index,
-      isSelected,
-    });
+    this.adapter.emitEvent<MDCChipSetSelectionEventDetail>(
+        MDCChipSetEvents.SELECTION, {
+          chipID: this.adapter.getChipIdAtIndex(index),
+          chipIndex: index,
+          isSelected,
+        });
     // Early exit if we support multi-selection
     if (this.supportsMultiSelect()) {
       return;
@@ -327,11 +340,12 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
 
   private removeAfterAnimation(index: number, chipID: string) {
     this.adapter.removeChipAtIndex(index);
-    this.adapter.emitEvent<MDCChipSetRemovalEventDetail>(Events.REMOVAL, {
-      chipIndex: index,
-      isComplete: true,
-      chipID,
-    });
+    this.adapter.emitEvent<MDCChipSetRemovalEventDetail>(
+        MDCChipSetEvents.REMOVAL, {
+          chipIndex: index,
+          isComplete: true,
+          chipID,
+        });
 
     const chipCount = this.adapter.getChipCount();
     // Early exit if we have an empty chip set
@@ -357,11 +371,11 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
     let incrIndex = index;
     while (decrIndex > -1 || incrIndex < chipCount) {
       const focusAction = this.getNearestFocusableAction(
-          decrIndex, incrIndex, ActionType.TRAILING);
+          decrIndex, incrIndex, MDCChipActionType.TRAILING);
       if (focusAction) {
         this.focusChip(
             focusAction.index, focusAction.action,
-            FocusBehavior.FOCUSABLE_AND_FOCUSED);
+            MDCChipActionFocusBehavior.FOCUSABLE_AND_FOCUSED);
         return;
       }
 
@@ -372,7 +386,7 @@ export class MDCChipSetFoundation extends MDCFoundation<MDCChipSetAdapter> {
 
   private getNearestFocusableAction(
       decrIndex: number, incrIndex: number,
-      actionType?: ActionType): FocusAction|null {
+      actionType?: MDCChipActionType): FocusAction|null {
     const decrAction =
         this.getFocusableAction(decrIndex, Operator.DECREMENT, actionType);
     if (decrAction) {

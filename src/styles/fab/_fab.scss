@@ -28,7 +28,6 @@
 @use './../dom/mixins' as dom-mixins;
 @use './../ripple/ripple';
 @use './../ripple/ripple-theme';
-@use './../rtl/mixins' as rtl-mixins;
 @use './../shape/mixins' as shape-mixins;
 @use './../shape/functions' as shape-functions;
 @use './../theme/css';
@@ -50,7 +49,7 @@
   @include ripple($query);
 }
 
-@mixin without-ripple($query: feature-targeting.all()) {
+@mixin static-styles($query: feature-targeting.all()) {
   // postcss-bem-linter: define fab
 
   @include touch-target-mixins.wrapper($query); // COPYBARA_COMMENT_THIS_LINE
@@ -59,11 +58,6 @@
 
   .mdc-fab {
     @include base_($query: $query);
-    @include fab-theme.container-color(secondary, $query: $query);
-    @include fab-theme.icon-size(24px, $query: $query);
-    @include fab-theme.ink-color(on-secondary, $query: $query);
-    @include fab-theme.shape-radius(fab-theme.$shape-radius, $query: $query);
-    @include elevation-theme.elevation(6, $query: $query);
   }
 
   .mdc-fab--mini {
@@ -112,6 +106,18 @@
   }
 
   // postcss-bem-linter: end
+}
+
+@mixin without-ripple($query: feature-targeting.all()) {
+  @include static-styles($query: $query);
+
+  .mdc-fab {
+    @include fab-theme.container-color(secondary, $query: $query);
+    @include fab-theme.icon-size(24px, $query: $query);
+    @include fab-theme.ink-color(on-secondary, $query: $query);
+    @include fab-theme.shape-radius(fab-theme.$shape-radius, $query: $query);
+    @include elevation-theme.elevation(6, $query: $query);
+  }
 }
 
 @mixin ripple($query: feature-targeting.all()) {

@@ -21,9 +21,10 @@
  * THE SOFTWARE.
  */
 
-import {ActionType, FocusBehavior} from '../action/constants';
-import {Animation} from '../chip/constants';
-import {Attributes, Events} from './constants';
+import {MDCChipActionFocusBehavior, MDCChipActionType} from '../action/constants';
+import {MDCChipAnimation} from '../chip/constants';
+
+import {MDCChipSetAttributes, MDCChipSetEvents} from './constants';
 
 /**
  * Defines the shape of the adapter expected by the foundation.
@@ -37,13 +38,14 @@ export interface MDCChipSetAdapter {
   announceMessage(message: string): void;
 
   /** Emits the given event with the given detail. */
-  emitEvent<D extends object>(eventName: Events, eventDetail: D): void;
+  emitEvent<D extends object>(eventName: MDCChipSetEvents, eventDetail: D):
+      void;
 
   /** Returns the value for the given attribute, if it exists. */
-  getAttribute(attrName: Attributes): string|null;
+  getAttribute(attrName: MDCChipSetAttributes): string|null;
 
   /** Returns the actions provided by the child chip at the given index. */
-  getChipActionsAtIndex(index: number): ActionType[];
+  getChipActionsAtIndex(index: number): MDCChipActionType[];
 
   /** Returns the number of child chips. */
   getChipCount(): number;
@@ -55,25 +57,27 @@ export interface MDCChipSetAdapter {
   getChipIndexById(chipID: string): number;
 
   /** Proxies to the MDCChip#isActionFocusable method. */
-  isChipFocusableAtIndex(index: number, actionType: ActionType): boolean;
+  isChipFocusableAtIndex(index: number, actionType: MDCChipActionType): boolean;
 
   /** Proxies to the MDCChip#isActionSelectable method. */
-  isChipSelectableAtIndex(index: number, actionType: ActionType): boolean;
+  isChipSelectableAtIndex(index: number, actionType: MDCChipActionType):
+      boolean;
 
   /** Proxies to the MDCChip#isActionSelected method. */
-  isChipSelectedAtIndex(index: number, actionType: ActionType): boolean;
+  isChipSelectedAtIndex(index: number, actionType: MDCChipActionType): boolean;
 
   /** Removes the chip at the given index. */
   removeChipAtIndex(index: number): void;
 
   /** Proxies to the MDCChip#setActionFocus method. */
-  setChipFocusAtIndex(index: number, action: ActionType, focus: FocusBehavior):
-      void;
+  setChipFocusAtIndex(
+      index: number, action: MDCChipActionType,
+      focus: MDCChipActionFocusBehavior): void;
 
   /** Proxies to the MDCChip#setActionSelected method. */
   setChipSelectedAtIndex(
-      index: number, actionType: ActionType, isSelected: boolean): void;
+      index: number, actionType: MDCChipActionType, isSelected: boolean): void;
 
   /** Starts the chip animation at the given index. */
-  startChipAnimationAtIndex(index: number, animation: Animation): void;
+  startChipAnimationAtIndex(index: number, animation: MDCChipAnimation): void;
 }

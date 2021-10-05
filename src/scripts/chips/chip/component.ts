@@ -25,10 +25,10 @@ import {MDCComponent} from './../../base/component';
 import {CustomEventListener} from './../../base/types';
 
 import {MDCChipAction, MDCChipActionFactory} from '../action/component';
-import {ActionType, Events, FocusBehavior} from '../action/constants';
+import {MDCChipActionEvents, MDCChipActionFocusBehavior, MDCChipActionType} from '../action/constants';
 
 import {MDCChipAdapter} from './adapter';
-import {Animation} from './constants';
+import {MDCChipAnimation} from './constants';
 import {MDCChipFoundation} from './foundation';
 import {ActionInteractionEvent, ActionNavigationEvent} from './types';
 
@@ -43,7 +43,7 @@ export type MDCChipFactory = (el: Element, foundation?: MDCChipFoundation) =>
  * MDCChip provides component encapsulation of the foundation implementation.
  */
 export class MDCChip extends MDCComponent<MDCChipFoundation> {
-  static attachTo(root: Element): MDCChip {
+  static override attachTo(root: Element): MDCChip {
     return new MDCChip(root);
   }
 
@@ -52,9 +52,9 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
   // Below properties are all assigned in #initialize()
   private handleActionInteraction!: CustomEventListener<ActionInteractionEvent>;
   private handleActionNavigation!: CustomEventListener<ActionNavigationEvent>;
-  private actions!: Map<ActionType, MDCChipAction>;
+  private actions!: Map<MDCChipActionType, MDCChipAction>;
 
-  initialize(
+  override initialize(
       actionFactory:
           MDCChipActionFactory = (el: Element) => new MDCChipAction(el)) {
     this.actions = new Map();
@@ -65,7 +65,7 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
     }
   }
 
-  initialSyncWithDOM() {
+  override initialSyncWithDOM() {
     this.handleActionInteraction = (event) => {
       this.foundation.handleActionInteraction(event);
     };
@@ -74,17 +74,18 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
       this.foundation.handleActionNavigation(event);
     };
 
-    this.listen(Events.INTERACTION, this.handleActionInteraction);
-    this.listen(Events.NAVIGATION, this.handleActionNavigation);
+    this.listen(MDCChipActionEvents.INTERACTION, this.handleActionInteraction);
+    this.listen(MDCChipActionEvents.NAVIGATION, this.handleActionNavigation);
   }
 
-  destroy() {
-    this.unlisten(Events.INTERACTION, this.handleActionInteraction);
-    this.unlisten(Events.NAVIGATION, this.handleActionNavigation);
+  override destroy() {
+    this.unlisten(
+        MDCChipActionEvents.INTERACTION, this.handleActionInteraction);
+    this.unlisten(MDCChipActionEvents.NAVIGATION, this.handleActionNavigation);
     super.destroy();
   }
 
-  getDefaultFoundation() {
+  override getDefaultFoundation() {
     // DO NOT INLINE this variable. For backward compatibility, foundations take
     // a Partial<MDCFooAdapter>. To ensure we don't accidentally omit any
     // methods, we need a separate, strongly typed adapter variable.
@@ -96,7 +97,7 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
         this.emit(eventName, eventDetail, true /* shouldBubble */);
       },
       getActions: () => {
-        const actions: ActionType[] = [];
+        const actions: MDCChipActionType[] = [];
         for (const [key] of this.actions) {
           actions.push(key);
         }
@@ -108,28 +109,28 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
         return this.rootHTML.offsetWidth;
       },
       hasClass: (className) => this.root.classList.contains(className),
-      isActionSelectable: (actionType: ActionType) => {
+      isActionSelectable: (actionType: MDCChipActionType) => {
         const action = this.actions.get(actionType);
         if (action) {
           return action.isSelectable();
         }
         return false;
       },
-      isActionSelected: (actionType: ActionType) => {
+      isActionSelected: (actionType: MDCChipActionType) => {
         const action = this.actions.get(actionType);
         if (action) {
           return action.isSelected();
         }
         return false;
       },
-      isActionFocusable: (actionType: ActionType) => {
+      isActionFocusable: (actionType: MDCChipActionType) => {
         const action = this.actions.get(actionType);
         if (action) {
           return action.isFocusable();
         }
         return false;
       },
-      isActionDisabled: (actionType: ActionType) => {
+      isActionDisabled: (actionType: MDCChipActionType) => {
         const action = this.actions.get(actionType);
         if (action) {
           return action.isDisabled();
@@ -141,24 +142,28 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
       removeClass: (className) => {
         this.root.classList.remove(className);
       },
-      setActionDisabled: (actionType: ActionType, isDisabled: boolean) => {
-        const action = this.actions.get(actionType);
-        if (action) {
-          action.setDisabled(isDisabled);
-        }
-      },
-      setActionFocus: (actionType: ActionType, behavior: FocusBehavior) => {
-        const action = this.actions.get(actionType);
-        if (action) {
-          action.setFocus(behavior);
-        }
-      },
-      setActionSelected: (actionType: ActionType, isSelected: boolean) => {
-        const action = this.actions.get(actionType);
-        if (action) {
-          action.setSelected(isSelected);
-        }
-      },
+      setActionDisabled:
+          (actionType: MDCChipActionType, isDisabled: boolean) => {
+            const action = this.actions.get(actionType);
+            if (action) {
+              action.setDisabled(isDisabled);
+            }
+          },
+      setActionFocus:
+          (actionType: MDCChipActionType,
+           behavior: MDCChipActionFocusBehavior) => {
+            const action = this.actions.get(actionType);
+            if (action) {
+              action.setFocus(behavior);
+            }
+          },
+      setActionSelected:
+          (actionType: MDCChipActionType, isSelected: boolean) => {
+            const action = this.actions.get(actionType);
+            if (action) {
+              action.setSelected(isSelected);
+            }
+          },
       setStyleProperty: (prop: string, value: string) => {
         this.rootHTML.style.setProperty(prop, value);
       },
@@ -176,8 +181,8 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
     }
   }
 
-  /** Returns the ActionTypes for the encapsulated actions. */
-  getActions(): ActionType[] {
+  /** Returns the MDCChipActionTypes for the encapsulated actions. */
+  getActions(): MDCChipActionType[] {
     return this.foundation.getActions();
   }
 
@@ -195,32 +200,32 @@ export class MDCChip extends MDCComponent<MDCChipFoundation> {
   }
 
   /** Returns the focusability of the action. */
-  isActionFocusable(action: ActionType): boolean {
+  isActionFocusable(action: MDCChipActionType): boolean {
     return this.foundation.isActionFocusable(action);
   }
 
   /** Returns the selectability of the action. */
-  isActionSelectable(action: ActionType): boolean {
+  isActionSelectable(action: MDCChipActionType): boolean {
     return this.foundation.isActionSelectable(action);
   }
 
   /** Returns the selected state of the action. */
-  isActionSelected(action: ActionType): boolean {
+  isActionSelected(action: MDCChipActionType): boolean {
     return this.foundation.isActionSelected(action);
   }
 
   /** Sets the focus behavior of the action. */
-  setActionFocus(action: ActionType, focus: FocusBehavior) {
+  setActionFocus(action: MDCChipActionType, focus: MDCChipActionFocusBehavior) {
     this.foundation.setActionFocus(action, focus);
   }
 
   /** Sets the selected state of the action. */
-  setActionSelected(action: ActionType, isSelected: boolean) {
+  setActionSelected(action: MDCChipActionType, isSelected: boolean) {
     this.foundation.setActionSelected(action, isSelected);
   }
 
   /** Starts the animation on the chip. */
-  startAnimation(animation: Animation) {
+  startAnimation(animation: MDCChipAnimation) {
     this.foundation.startAnimation(animation);
   }
 }

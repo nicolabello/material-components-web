@@ -28,31 +28,33 @@ import {MDCMenuAdapter} from './adapter';
 import {cssClasses, DefaultFocusState, numbers, strings} from './constants';
 
 export class MDCMenuFoundation extends MDCFoundation<MDCMenuAdapter> {
-  static get cssClasses() {
+  static override get cssClasses() {
     return cssClasses;
   }
 
-  static get strings() {
+  static override get strings() {
     return strings;
   }
 
-  static get numbers() {
+  static override get numbers() {
     return numbers;
   }
 
   private closeAnimationEndTimerId = 0;
   private defaultFocusState = DefaultFocusState.LIST_ROOT;
+  private selectedIndex = -1;
 
   /**
    * @see {@link MDCMenuAdapter} for typing information on parameters and return types.
    */
-  static get defaultAdapter(): MDCMenuAdapter {
+  static override get defaultAdapter(): MDCMenuAdapter {
     // tslint:disable:object-literal-sort-keys Methods should be in the same order as the adapter interface.
     return {
       addClassToElementAtIndex: () => undefined,
       removeClassFromElementAtIndex: () => undefined,
       addAttributeToElementAtIndex: () => undefined,
       removeAttributeFromElementAtIndex: () => undefined,
+      getAttributeFromElementAtIndex: () => null,
       elementContainsClass: () => false,
       closeSurface: () => undefined,
       getElementIndex: () => -1,
@@ -70,7 +72,7 @@ export class MDCMenuFoundation extends MDCFoundation<MDCMenuAdapter> {
     super({...MDCMenuFoundation.defaultAdapter, ...adapter});
   }
 
-  destroy() {
+  override destroy() {
     if (this.closeAnimationEndTimerId) {
       clearTimeout(this.closeAnimationEndTimerId);
     }
@@ -94,7 +96,9 @@ export class MDCMenuFoundation extends MDCFoundation<MDCMenuAdapter> {
     }
 
     this.adapter.notifySelected({index});
-    this.adapter.closeSurface();
+    const skipRestoreFocus = this.adapter.getAttributeFromElementAtIndex(
+                                 index, strings.SKIP_RESTORE_FOCUS) === 'true';
+    this.adapter.closeSurface(skipRestoreFocus);
 
     // Wait for the menu to close before adding/removing classes that affect styles.
     this.closeAnimationEndTimerId = setTimeout(() => {
@@ -133,6 +137,11 @@ export class MDCMenuFoundation extends MDCFoundation<MDCMenuAdapter> {
     this.defaultFocusState = focusState;
   }
 
+  /** @return Index of the currently selected list item within the menu. */
+  getSelectedIndex() {
+    return this.selectedIndex;
+  }
+
   /**
    * Selects the list item at `index` within the menu.
    * @param index Index of list item within the menu.
@@ -157,6 +166,8 @@ export class MDCMenuFoundation extends MDCFoundation<MDCMenuAdapter> {
         index, cssClasses.MENU_SELECTED_LIST_ITEM);
     this.adapter.addAttributeToElementAtIndex(
         index, strings.ARIA_CHECKED_ATTR, 'true');
+
+    this.selectedIndex = index;
   }
 
   /**

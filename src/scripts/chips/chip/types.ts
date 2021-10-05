@@ -21,15 +21,16 @@
  * THE SOFTWARE.
  */
 
-import {ActionType} from '../action/constants';
+import {MDCChipActionType} from '../action/constants';
 import {MDCChipActionInteractionEventDetail, MDCChipActionNavigationEventDetail} from '../action/types';
-import {Animation} from './constants';
+
+import {MDCChipAnimation} from './constants';
 
 /** MDCChipInteractionEventDetail provides details for the interaction event. */
 export interface MDCChipInteractionEventDetail {
   actionID: string;
   chipID: string;
-  source: ActionType;
+  source: MDCChipActionType;
   shouldRemove: boolean;
   isSelectable: boolean;
   isSelected: boolean;
@@ -38,15 +39,17 @@ export interface MDCChipInteractionEventDetail {
 /** MDCChipNavigationEventDetail provides details for the navigation event. */
 export interface MDCChipNavigationEventDetail {
   chipID: string;
-  source: ActionType;
+  source: MDCChipActionType;
   key: string;
   isRTL: boolean;
 }
 
-/** MDCChipAnimationEventDetail provides details for the animation event. */
+/**
+ * MDCChipAnimationEventDetail provides details for the animation event.
+ */
 export interface MDCChipAnimationEventDetail {
   chipID: string;
-  animation: Animation;
+  animation: MDCChipAnimation;
   isComplete: boolean;
   addedAnnouncement?: string;
   removedAnnouncement?: string;

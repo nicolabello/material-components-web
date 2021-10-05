@@ -35,7 +35,7 @@ const emptyClientRect = {
   right: 0,
   top: 0,
   width: 0,
-};
+} as any;
 
 enum FocusBehavior {
   SHOULD_FOCUS,
@@ -43,15 +43,15 @@ enum FocusBehavior {
 }
 
 export class MDCChipFoundation extends MDCFoundation<MDCChipAdapter> {
-  static get strings() {
+  static override get strings() {
     return strings;
   }
 
-  static get cssClasses() {
+  static override get cssClasses() {
     return cssClasses;
   }
 
-  static get defaultAdapter(): MDCChipAdapter {
+  static override get defaultAdapter(): MDCChipAdapter {
     return {
       addClass: () => undefined,
       addClassToLeadingIcon: () => undefined,
@@ -153,7 +153,7 @@ export class MDCChipFoundation extends MDCFoundation<MDCChipAdapter> {
           right: rootRect.right,
           top: rootRect.top,
           width: rootRect.width + checkmarkRect.height,
-        };
+        } as any;
       }
     }
 

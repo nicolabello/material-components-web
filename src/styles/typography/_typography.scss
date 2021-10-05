@@ -23,6 +23,7 @@
 // Selector '.mdc-*' should only be used in this project.
 // stylelint-disable selector-class-pattern
 
+@use 'sass:math';
 @use 'sass:list';
 @use 'sass:map';
 @use 'sass:string';
@@ -69,11 +70,24 @@
 }
 
 @function get-letter-spacing_($tracking, $font-size) {
-  @return $tracking / ($font-size * 16) * 1em;
+  @return math.div($tracking, $font-size * 16) * 1em;
 }
 
 @function px-to-rem($px) {
-  @return $px / 16px * 1rem;
+  @if custom-properties.is-custom-prop($px) {
+    @return custom-properties.set-fallback(
+      $px,
+      _px-to-rem(custom-properties.get-fallback($px))
+    );
+  }
+  @return _px-to-rem($px);
+}
+
+@function _px-to-rem($px) {
+  @if $px == null {
+    @return null;
+  }
+  @return math.div($px, 16px) * 1rem;
 }
 
 $font-family: string.unquote('Roboto, sans-serif') !default;
@@ -503,4 +517,22 @@ $_styles-copy: $styles;
 
 @function get-tracking($typography) {
   @return map.get($styles, $typography, letter-spacing);
+}
+
+$_typography-theme: (
+  font: null,
+  line-height: null,
+  size: null,
+  weight: null,
+  tracking: null,
+);
+
+@mixin theme-styles($theme) {
+  @include theme.validate-theme($_typography-theme, $theme);
+
+  @include theme.property(font-family, map.get($theme, font));
+  @include theme.property(line-height, map.get($theme, line-height));
+  @include theme.property(size, map.get($theme, font-size));
+  @include theme.property(weight, map.get($theme, font-weight));
+  @include theme.property(tracking, map.get($theme, letter-spacing));
 }

@@ -35,19 +35,19 @@ function isNumberArray(selectedIndex: MDCListIndex): selectedIndex is number[] {
 }
 
 export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
-  static get strings() {
+  static override get strings() {
     return strings;
   }
 
-  static get cssClasses() {
+  static override get cssClasses() {
     return cssClasses;
   }
 
-  static get numbers() {
+  static override get numbers() {
     return numbers;
   }
 
-  static get defaultAdapter(): MDCListAdapter {
+  static override get defaultAdapter(): MDCListAdapter {
     return {
       addClassForElementIndex: () => undefined,
       focusItemAtIndex: () => undefined,
@@ -108,27 +108,30 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
     }
   }
 
-  /**
-   * Sets the private wrapFocus variable.
-   */
+  /** Returns the index of the item that was last focused. */
+  getFocusedItemIndex() {
+    return this.focusedItemIndex;
+  }
+
+  /** Toggles focus wrapping with keyboard navigation. */
   setWrapFocus(value: boolean) {
     this.wrapFocus = value;
   }
 
   /**
-   * Sets the isVertical private variable.
+   * Toggles orientation direction for keyboard navigation (true for vertical,
+   * false for horizontal).
    */
   setVerticalOrientation(value: boolean) {
     this.isVertical = value;
   }
 
-  /**
-   * Sets the isSingleSelectionList private variable.
-   */
+  /** Toggles single-selection behavior. */
   setSingleSelection(value: boolean) {
     this.isSingleSelectionList = value;
     if (value) {
       this.maybeInitializeSingleSelection();
+      this.selectedIndex = this.getSelectedIndexFromDOM();
     }
   }
 
@@ -137,6 +140,21 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
    * initializes the internal state to match the selected item.
    */
   private maybeInitializeSingleSelection() {
+    const selectedItemIndex = this.getSelectedIndexFromDOM();
+    if (selectedItemIndex === numbers.UNSET_INDEX) return;
+
+    const hasActivatedClass = this.adapter.listItemAtIndexHasClass(
+        selectedItemIndex, cssClasses.LIST_ITEM_ACTIVATED_CLASS);
+    if (hasActivatedClass) {
+      this.setUseActivatedClass(true);
+    }
+    this.isSingleSelectionList = true;
+    this.selectedIndex = selectedItemIndex;
+  }
+
+  /** @return Index of the first selected item based on the DOM state. */
+  private getSelectedIndexFromDOM() {
+    let selectedIndex = numbers.UNSET_INDEX;
     const listItemsCount = this.adapter.getListItemCount();
     for (let i = 0; i < listItemsCount; i++) {
       const hasSelectedClass = this.adapter.listItemAtIndexHasClass(
@@ -147,14 +165,11 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
         continue;
       }
 
-      if (hasActivatedClass) {
-        this.setUseActivatedClass(true);
-      }
-
-      this.isSingleSelectionList = true;
-      this.selectedIndex = i;
-      return;
+      selectedIndex = i;
+      break;
     }
+
+    return selectedIndex;
   }
 
   /**
@@ -176,15 +191,14 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
         typeahead.isTypingInProgress(this.typeaheadState);
   }
 
-  /**
-   * Sets the useActivatedClass private variable.
-   */
+  /** Toggle use of the "activated" CSS class. */
   setUseActivatedClass(useActivated: boolean) {
     this.useActivatedClass = useActivated;
   }
 
   /**
-   * Sets the useSelectedAttr private variable.
+   * Toggles use of the selected attribute (true for aria-selected, false for
+   * aria-checked).
    */
   setUseSelectedAttribute(useSelected: boolean) {
     this.useSelectedAttr = useSelected;
@@ -194,7 +208,8 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
     return this.selectedIndex;
   }
 
-  setSelectedIndex(index: MDCListIndex) {
+  setSelectedIndex(index: MDCListIndex, {forceUpdate}: {forceUpdate?:
+                                                            boolean} = {}) {
     if (!this.isIndexValid(index)) {
       return;
     }
@@ -204,7 +219,7 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
     } else if (this.isRadioList) {
       this.setRadioAtIndex(index as number);
     } else {
-      this.setSingleSelectionAtIndex(index as number);
+      this.setSingleSelectionAtIndex(index as number, {forceUpdate});
     }
   }
 
@@ -451,9 +466,10 @@ export class MDCListFoundation extends MDCFoundation<MDCListAdapter> {
     }
   }
 
-
-  private setSingleSelectionAtIndex(index: number) {
-    if (this.selectedIndex === index) {
+  private setSingleSelectionAtIndex(index: number, {forceUpdate}: {
+    forceUpdate?: boolean
+  } = {}) {
+    if (this.selectedIndex === index && !forceUpdate) {
       return;
     }
 

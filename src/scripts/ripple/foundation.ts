@@ -46,6 +46,10 @@ interface Coordinates {
   top: number;
 }
 
+interface EventHandlerNonNull {
+  (event: Event): any;
+}
+
 type ActivationEventType = 'touchstart' | 'pointerdown' | 'mousedown' | 'keydown';
 type DeactivationEventType = 'touchend' | 'pointerup' | 'mouseup' | 'contextmenu';
 
@@ -63,23 +67,24 @@ const POINTER_DEACTIVATION_EVENT_TYPES: DeactivationEventType[] = [
 let activatedTargets: Array<EventTarget | null> = [];
 
 export class MDCRippleFoundation extends MDCFoundation<MDCRippleAdapter> {
-  static get cssClasses() {
+  static override get cssClasses() {
     return cssClasses;
   }
 
-  static get strings() {
+  static override get strings() {
     return strings;
   }
 
-  static get numbers() {
+  static override get numbers() {
     return numbers;
   }
 
-  static get defaultAdapter(): MDCRippleAdapter {
+  static override get defaultAdapter(): MDCRippleAdapter {
     return {
       addClass: () => undefined,
       browserSupportsCssVars: () => true,
-      computeBoundingRect: () => ({top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0}),
+      computeBoundingRect: () =>
+          ({top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0} as any),
       containsEventTarget: () => true,
       deregisterDocumentInteractionHandler: () => undefined,
       deregisterInteractionHandler: () => undefined,
@@ -142,7 +147,7 @@ export class MDCRippleFoundation extends MDCFoundation<MDCRippleAdapter> {
     };
   }
 
-  init() {
+  override init() {
     const supportsPressRipple = this.supportsPressRipple();
 
     this.registerRootHandlers(supportsPressRipple);
@@ -160,7 +165,7 @@ export class MDCRippleFoundation extends MDCFoundation<MDCRippleAdapter> {
     }
   }
 
-  destroy() {
+  override destroy() {
     if (this.supportsPressRipple()) {
       if (this.activationTimer) {
         clearTimeout(this.activationTimer);

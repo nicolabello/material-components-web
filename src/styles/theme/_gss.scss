@@ -38,7 +38,7 @@
 ///   left: 0;
 ///
 /// @example - css
-///   /* @noflip */
+///   /* @noflip */ /*rtl:ignore*/
 ///   left: 0;
 ///
 /// @param {Map} $annotations - Map of annotations. Values must be set to `true`
@@ -57,6 +57,6 @@
 
   // noflip must be the last tag right before the property
   @if (map.get($annotations, noflip) == true) {
-    /* @noflip */
+    /* @noflip */ /*rtl:ignore*/
   }
 }
