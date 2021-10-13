@@ -56,11 +56,18 @@ function updateStyles(repoPath, mainFolder) {
     replaceImports(mainFolder);
 
     // Create styles.scss
-    fs.writeFileSync(`${mainFolder}/styles.scss`, glob.sync(`${mainFolder}/*/mdc-*.scss`)
+    const styles = new Map();
+
+    const mdcImports = glob.sync(`${mainFolder}/*/mdc-*.scss`)
         .filter(file => file.indexOf('.import.') < 0)
         .map(file => file.replace(mainFolder, '.').replace('.scss', ''))
-        .map(file => `@use "${file}";`)
-        .join('\n'));
+        .forEach(file => styles.set(path.basename(file), `@use "${file}";`));
+
+    const stylesImports = glob.sync(`${mainFolder}/*/styles.scss`)
+        .map(file => file.replace(mainFolder, '.').replace('.scss', ''))
+        .forEach(file => styles.set(`mdc-${path.basename(path.dirname(file))}`, `@use "${file}" as mdc-${path.basename(path.dirname(file))};`));
+
+    fs.writeFileSync(`${mainFolder}/styles.scss`, Array.from(styles.values()).join('\n'));
 
     // Create _members.scss
     fs.writeFileSync(`${mainFolder}/_members.scss`, glob.sync(`${mainFolder}/*/_index.scss`)

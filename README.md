@@ -82,7 +82,8 @@ const checkbox = new MDCCheckbox(document.querySelector('.mdc-checkbox'));
 
 ## Documentation
 
-For more documentation please refer to the original repo's [readme](https://github.com/material-components/material-components-web#readme).
+- [Original repo documentation](https://github.com/material-components/material-components-web#readme).
+- [Material design documentation](https://material.io/develop/web/getting-started).
 
 Please note that the imports in the documentation must be replaced as following:
 
