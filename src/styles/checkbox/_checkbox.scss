@@ -30,6 +30,7 @@
 @use './../density/functions' as density-functions;
 @use './../dom/dom';
 @use './../feature-targeting/feature-targeting';
+@use './../focus-ring/focus-ring';
 @use './../ripple/ripple';
 @use './../ripple/ripple-theme';
 @use './../touch-target/mixins' as touch-target-mixins;
@@ -75,6 +76,24 @@
   .mdc-checkbox {
     @include feature-targeting.targets($feat-structure) {
       @include base_;
+    }
+
+    @include ripple-theme.focus {
+      .mdc-checkbox__focus-ring {
+        @include focus-ring.focus-ring(
+          $query: $query,
+          $container-outer-padding-vertical: 0,
+          $container-outer-padding-horizontal: 0
+        );
+      }
+    }
+
+    // Turn off focus ring for IE when HCM is turn off. For some reason this
+    // adds space to the bottom on the focused checkbox inside a dialog.
+    @media all and (-ms-high-contrast: none) {
+      .mdc-checkbox__focus-ring {
+        display: none;
+      }
     }
   }
 

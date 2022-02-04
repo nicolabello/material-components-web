@@ -30,11 +30,8 @@ import {strings} from './constants';
 
 const {AUTO_INIT_ATTR, AUTO_INIT_STATE_ATTR, INITIALIZED_STATE} = strings;
 
-export interface MDCAttachable {
-  new<F extends MDCFoundation>(root: Element, foundation?: F, ...args: Array<unknown>): MDCComponent<F>;
-
-  // Static method.
-  attachTo<F extends MDCFoundation>(root: Element): MDCComponent<F>;
+export interface MDCAttachable extends Function {
+  attachTo(root: Element): MDCComponent<MDCFoundation>;
 }
 
 interface InternalComponentRegistry {
@@ -117,8 +114,9 @@ mdcAutoInit.deregister = function(componentName: string) {
 
 /** @nocollapse */
 mdcAutoInit.deregisterAll = function() {
-  const keys = Object.keys(registry) as string[];
-  keys.forEach(this.deregister, this);
+  for (const componentName of Object.keys(registry)) {
+    mdcAutoInit.deregister(componentName);
+  }
 };
 
 // tslint:disable-next-line:no-default-export Needed for backward compatibility with MDC Web v0.44.0 and earlier.

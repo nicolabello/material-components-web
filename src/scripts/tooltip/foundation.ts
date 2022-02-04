@@ -104,8 +104,8 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   private hideDelayMs = numbers.HIDE_DELAY_MS;
   private showDelayMs = numbers.SHOW_DELAY_MS;
 
-  private anchorRect: ClientRect|null = null;
-  private parentRect: ClientRect|null = null;
+  private anchorRect: DOMRect|null = null;
+  private parentRect: DOMRect|null = null;
   private frameId: number|null = null;
   private hideTimeout: number|null = null;
   private showTimeout: number|null = null;
@@ -499,7 +499,11 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     // will have the HIDE class (before calling the adapter removeClass method).
     // If tooltip is now hidden, send a notification that the animation has
     // completed and the tooltip is no longer visible.
-    if (isHidingTooltip) {
+    // We don't send a notification of the animation completing if a showTimeout
+    // value is set -- this happens when a user triggers a tooltip to be shown
+    // while that tooltip is fading. Once this hide transition is completed,
+    // that same tooltip will be re-shown.
+    if (isHidingTooltip && this.showTimeout === null) {
       this.adapter.notifyHidden();
     }
   }
@@ -614,7 +618,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
    * Users can specify an alignment, however, if this alignment results in the
    * tooltip colliding with the viewport, this specification is overwritten.
    */
-  private calculateTooltipStyles(anchorRect: ClientRect|null) {
+  private calculateTooltipStyles(anchorRect: DOMRect|null) {
     if (!anchorRect) {
       return {top: 0, left: 0};
     }
@@ -637,7 +641,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
    * origin that should be used when animating the tooltip.
    */
   private calculateXTooltipDistance(
-      anchorRect: ClientRect,
+      anchorRect: DOMRect,
       tooltipWidth: number): ({distance: number, xTransformOrigin: string}) {
     const isLTR = !this.adapter.isRTL();
     let startPos, endPos, centerPos: number|undefined;
@@ -761,7 +765,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
    * origin that should be used when animating the tooltip.
    */
   private calculateYTooltipDistance(
-      anchorRect: ClientRect, tooltipHeight: number) {
+      anchorRect: DOMRect, tooltipHeight: number) {
     const belowYPos = anchorRect.bottom + this.anchorGap;
     const aboveYPos = anchorRect.top - (this.anchorGap + tooltipHeight);
     const yPositionOptions =
@@ -837,7 +841,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     return yPos + tooltipHeight <= viewportHeight && yPos >= 0;
   }
 
-  private calculateTooltipWithCaretStyles(anchorRect: ClientRect|null) {
+  private calculateTooltipWithCaretStyles(anchorRect: DOMRect|null) {
     // Prior to grabbing the caret bounding rect, we clear all styles set on the
     // caret. This will ensure the width/height is consistent (since we rotate
     // the caret 90deg in some positions which would result in the height and
@@ -856,7 +860,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
     // animation, we divide by this value to retrieve the actual caret
     // dimensions.
     const caretWidth = caretSize.width / numbers.ANIMATION_SCALE;
-    // Since we hide half of caret, we divide the returned ClientRect height
+    // Since we hide half of caret, we divide the returned DOMRect height
     // by 2.
     const caretHeight = (caretSize.height / numbers.ANIMATION_SCALE) / 2;
     const tooltipSize = this.adapter.getTooltipSize();
@@ -891,7 +895,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   }
 
   private calculateXWithCaretDistanceOptions(
-      anchorRect: ClientRect, tooltipWidth: number,
+      anchorRect: DOMRect, tooltipWidth: number,
       caretSize: {caretHeight: number, caretWidth: number}):
       Map<XPositionWithCaret, number> {
     const {caretWidth, caretHeight} = caretSize;
@@ -923,7 +927,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
   }
 
   private calculateYWithCaretDistanceOptions(
-      anchorRect: ClientRect, tooltipHeight: number,
+      anchorRect: DOMRect, tooltipHeight: number,
       caretSize: {caretHeight: number, caretWidth: number}):
       Map<YPositionWithCaret, number> {
     const {caretWidth, caretHeight} = caretSize;
@@ -1042,7 +1046,7 @@ export class MDCTooltipFoundation extends MDCFoundation<MDCTooltipAdapter> {
    * in situations of very small viewports/large tooltips.
    */
   private generateBackupPositionOption(
-      anchorRect: ClientRect, tooltipSize: {width: number, height: number},
+      anchorRect: DOMRect, tooltipSize: {width: number, height: number},
       caretSize: {caretHeight: number, caretWidth: number}) {
     const isLTR = !this.adapter.isRTL();
     let xDistance: number;

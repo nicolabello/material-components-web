@@ -27,7 +27,7 @@ import {MDCFoundation} from './../base/foundation';
 import {SpecificEventListener} from './../base/types';
 
 import {MDCSliderAdapter} from './adapter';
-import {attributes, cssClasses, numbers} from './constants';
+import {attributes, cssClasses, numbers, strings} from './constants';
 import {Thumb, TickMark} from './types';
 
 enum AnimationKeys {
@@ -61,12 +61,13 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
   // If `isRange`, this it the value of Thumb.END. Otherwise, it is the
   // value of the single thumb.
   private value!: number;     // Assigned in init()
-  private rect!: ClientRect;  // Assigned in layout() via init()
+  private rect!: DOMRect;  // Assigned in layout() via init()
 
   private isDisabled = false;
 
   private isDiscrete = false;
   private step = numbers.STEP_SIZE;
+  private minRange = numbers.MIN_RANGE;
   // Number of digits after the decimal point to round to, when computing
   // values. This is based on the step size by default and is used to
   // avoid floating point precision errors in JS.
@@ -148,6 +149,7 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
       focusInput: () => undefined,
       isInputFocused: () => false,
       getThumbKnobWidth: () => 0,
+      getValueIndicatorContainerWidth: () => 0,
       getThumbBoundingClientRect: () =>
           ({top: 0, right: 0, bottom: 0, left: 0, width: 0, height: 0} as any),
       getBoundingClientRect: () =>
@@ -205,14 +207,20 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
     const step = stepAttr ?
         this.convertAttributeValueToNumber(stepAttr, attributes.INPUT_STEP) :
         this.step;
+    const minRangeAttr = this.adapter.getAttribute(attributes.DATA_MIN_RANGE);
+    const minRange = minRangeAttr ?
+        this.convertAttributeValueToNumber(
+            minRangeAttr, attributes.DATA_MIN_RANGE) :
+        this.minRange;
 
-    this.validateProperties({min, max, value, valueStart, step});
+    this.validateProperties({min, max, value, valueStart, step, minRange});
 
     this.min = min;
     this.max = max;
     this.value = value;
     this.valueStart = valueStart;
     this.step = step;
+    this.minRange = minRange;
     this.numDecimalPlaces = getNumDecimalPlaces(this.step);
 
     this.valueBeforeDownEvent = value;
@@ -285,10 +293,10 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
    * - For range (two-thumb) sliders, sets the end thumb's value.
    */
   setValue(value: number) {
-    if (this.isRange && value < this.valueStart) {
+    if (this.isRange && value < this.valueStart + this.minRange) {
       throw new Error(
           `end thumb value (${value}) must be >= start thumb ` +
-          `value (${this.valueStart})`);
+          `value (${this.valueStart}) + min range (${this.minRange})`);
     }
 
     this.updateValue(value, Thumb.END);
@@ -313,10 +321,10 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
     if (!this.isRange) {
       throw new Error('`valueStart` is only applicable for range sliders.');
     }
-    if (this.isRange && valueStart > this.value) {
+    if (this.isRange && valueStart > this.value - this.minRange) {
       throw new Error(
           `start thumb value (${valueStart}) must be <= end thumb ` +
-          `value (${this.value})`);
+          `value (${this.value}) - min range (${this.minRange})`);
     }
 
     this.updateValue(valueStart, Thumb.START);
@@ -329,6 +337,25 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
     this.updateUI();
   }
 
+  /**
+   * Only applicable for range sliders. Sets the minimum difference between the
+   * start and end values.
+   */
+  setMinRange(value: number) {
+    if (!this.isRange) {
+      throw new Error('`minRange` is only applicable for range sliders.');
+    }
+    if (value < 0) {
+      throw new Error('`minRange` must be non-negative.');
+    }
+    if (this.value - this.valueStart < value) {
+      throw new Error(
+          `start thumb value (${this.valueStart}) and end thumb value ` +
+          `(${this.value}) must differ by at least ${value}.`);
+    }
+    this.minRange = value;
+  }
+
   setIsDiscrete(value: boolean) {
     this.isDiscrete = value;
     this.updateValueIndicatorUI();
@@ -337,6 +364,14 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
 
   getStep() {
     return this.step;
+  }
+
+  getMinRange() {
+    if (!this.isRange) {
+      throw new Error('`minRange` is only applicable for range sliders.');
+    }
+
+    return this.minRange;
   }
 
   setHasTickMarks(value: boolean) {
@@ -669,10 +704,11 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
     const valueStr = String(value);
     this.adapter.setInputAttribute(attributes.INPUT_VALUE, valueStr, thumb);
     if (this.isRange && thumb === Thumb.START) {
-      this.adapter.setInputAttribute(attributes.INPUT_MIN, valueStr, Thumb.END);
+      this.adapter.setInputAttribute(
+          attributes.INPUT_MIN, String(value + this.minRange), Thumb.END);
     } else if (this.isRange && thumb === Thumb.END) {
       this.adapter.setInputAttribute(
-          attributes.INPUT_MAX, valueStr, Thumb.START);
+          attributes.INPUT_MAX, String(value - this.minRange), Thumb.START);
     }
 
     // Sync attribute with property.
@@ -782,22 +818,22 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
   /**
    * Clamps the given value for the given thumb based on slider properties:
    * - Restricts value within [min, max].
-   * - If range slider, clamp start value <= end value, and
-   *   end value >= start value.
+   * - If range slider, clamp start value <= end value - min range, and
+   *   end value >= start value + min range.
    */
   private clampValue(value: number, thumb: Thumb): number {
     // Clamp value to [min, max] range.
     value = Math.min(Math.max(value, this.min), this.max);
 
-    const thumbStartMovedPastThumbEnd =
-        this.isRange && thumb === Thumb.START && value > this.value;
+    const thumbStartMovedPastThumbEnd = this.isRange && thumb === Thumb.START &&
+        value > this.value - this.minRange;
     if (thumbStartMovedPastThumbEnd) {
-      return this.value;
+      return this.value - this.minRange;
     }
-    const thumbEndMovedPastThumbStart =
-        this.isRange && thumb === Thumb.END && value < this.valueStart;
+    const thumbEndMovedPastThumbStart = this.isRange && thumb === Thumb.END &&
+        value < this.valueStart + this.minRange;
     if (thumbEndMovedPastThumbStart) {
-      return this.valueStart;
+      return this.valueStart + this.minRange;
     }
 
     return value;
@@ -828,12 +864,12 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
             (isRtl && thumb !== Thumb.START);
         if (trackAnimatesFromRight) {
           this.adapter.setTrackActiveStyleProperty('transform-origin', 'right');
-          this.adapter.setTrackActiveStyleProperty('left', 'unset');
+          this.adapter.setTrackActiveStyleProperty('left', 'auto');
           this.adapter.setTrackActiveStyleProperty(
               'right', `${this.rect.width - thumbRightPos}px`);
         } else {
           this.adapter.setTrackActiveStyleProperty('transform-origin', 'left');
-          this.adapter.setTrackActiveStyleProperty('right', 'unset');
+          this.adapter.setTrackActiveStyleProperty('right', 'auto');
           this.adapter.setTrackActiveStyleProperty('left', `${thumbLeftPos}px`);
         }
         this.adapter.setTrackActiveStyleProperty(
@@ -845,10 +881,12 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
         if (thumb === Thumb.START || !thumb || !this.initialStylesRemoved) {
           this.adapter.setThumbStyleProperty(
               transformProp, `translateX(${thumbStartPos}px)`, Thumb.START);
+          this.alignValueIndicator(Thumb.START, thumbStartPos);
         }
         if (thumb === Thumb.END || !thumb || !this.initialStylesRemoved) {
           this.adapter.setThumbStyleProperty(
               transformProp, `translateX(${thumbEndPos}px)`, Thumb.END);
+          this.alignValueIndicator(Thumb.END, thumbEndPos);
         }
 
         this.removeInitialStyles(isRtl);
@@ -859,11 +897,69 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
         const thumbStartPos = isRtl ? this.rect.width - rangePx : rangePx;
         this.adapter.setThumbStyleProperty(
             transformProp, `translateX(${thumbStartPos}px)`, Thumb.END);
+        this.alignValueIndicator(Thumb.END, thumbStartPos);
         this.adapter.setTrackActiveStyleProperty(
             transformProp, `scaleX(${pctComplete})`);
 
         this.removeInitialStyles(isRtl);
       });
+    }
+  }
+
+  /**
+   * Shifts the value indicator to either side if it would otherwise stick
+   * beyond the slider's length while keeping the caret above the knob.
+   */
+  private alignValueIndicator(thumb: Thumb, thumbPos: number) {
+    if (!this.isDiscrete) return;
+    const thumbHalfWidth =
+        this.adapter.getThumbBoundingClientRect(thumb).width / 2;
+    const containerWidth = this.adapter.getValueIndicatorContainerWidth(thumb);
+    const sliderWidth = this.adapter.getBoundingClientRect().width;
+    if (containerWidth / 2 > thumbPos + thumbHalfWidth) {
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_LEFT, `${thumbHalfWidth}px`, thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_RIGHT, 'auto', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_TRANSFORM, 'translateX(-50%)',
+          thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_LEFT, '0', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_RIGHT, 'auto', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_TRANSFORM, 'none', thumb);
+    } else if (containerWidth / 2 > sliderWidth - thumbPos + thumbHalfWidth) {
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_LEFT, 'auto', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_RIGHT, `${thumbHalfWidth}px`,
+          thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_TRANSFORM, 'translateX(50%)',
+          thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_LEFT, 'auto', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_RIGHT, '0', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_TRANSFORM, 'none', thumb);
+    } else {
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_LEFT, '50%', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_RIGHT, 'auto', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CARET_TRANSFORM, 'translateX(-50%)',
+          thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_LEFT, '50%', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_RIGHT, 'auto', thumb);
+      this.adapter.setThumbStyleProperty(
+          strings.VAR_VALUE_INDICATOR_CONTAINER_TRANSFORM, 'translateX(-50%)',
+          thumb);
     }
   }
 
@@ -904,7 +1000,7 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
     const transitionProp = HAS_WINDOW ?
         getCorrectPropertyName(window, 'transition') :
         'transition';
-    const transitionDefault = 'all 0s ease 0s';
+    const transitionDefault = 'none 0s ease 0s';
     this.adapter.setThumbStyleProperty(
         transitionProp, transitionDefault, Thumb.END);
     if (this.isRange) {
@@ -981,12 +1077,13 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
   }
 
   /** Checks that the given properties are valid slider values. */
-  private validateProperties({min, max, value, valueStart, step}: {
+  private validateProperties({min, max, value, valueStart, step, minRange}: {
     min: number,
     max: number,
     value: number,
     valueStart: number,
-    step: number
+    step: number,
+    minRange: number
   }) {
     if (min >= max) {
       throw new Error(
@@ -1013,6 +1110,19 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
             `MDCSliderFoundation: start value must be <= end value. ` +
             `Current values: [start value: ${valueStart}, end value: ${
                 value}]`);
+      }
+
+      if (minRange < 0) {
+        throw new Error(
+            `MDCSliderFoundation: minimum range must be non-negative. ` +
+            `Current min range: ${minRange}`);
+      }
+
+      if (value - valueStart < minRange) {
+        throw new Error(
+            `MDCSliderFoundation: start value and end value must differ by at least ` +
+            `${minRange}. Current values: [start value: ${valueStart}, ` +
+            `end value: ${value}]`);
       }
 
       const numStepsValueStartFromMin = (valueStart - min) / step;
