@@ -327,7 +327,6 @@ $error-color: error !default;
       $query: $query
     );
 
-    // stylelint-disable-next-line selector-combinator-space-after
     &:not(.mdc-select--focused) .mdc-select__anchor:hover {
       @include _hover-outline-color(
         state.get-hover-state($color-or-map),
@@ -887,7 +886,8 @@ $error-color: error !default;
         $value: calc(#{$value} + #{notched-outline-variables.$padding});
       }
 
-      @supports (top: max(0%)) {
+      // Interpolation is a workaround for sass/sass#3259.
+      @supports (top: max(#{0%})) {
         // A max() function makes this runtime dynamic. The padding will be
         // whichever is greater: the default horizontal padding, or the
         // calculated custom property plus extra padding.
