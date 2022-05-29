@@ -560,6 +560,9 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
   }
 
   handlePointerdown(event: PointerEvent) {
+    const isPrimaryButton = event.button === 0;
+    if (!isPrimaryButton) return;
+
     if (event.pointerId != null) {
       this.adapter.setPointerCapture(event.pointerId);
     }
@@ -1089,14 +1092,14 @@ export class MDCSliderFoundation extends MDCFoundation<MDCSliderAdapter> {
       attributeValue: string|null, attributeName: string) {
     if (attributeValue === null) {
       throw new Error(
-          `MDCSliderFoundation: \`${attributeName}\` must be non-null.`);
+          'MDCSliderFoundation: `' + attributeName + '` must be non-null.');
     }
 
     const value = Number(attributeValue);
     if (isNaN(value)) {
       throw new Error(
-          `MDCSliderFoundation: \`${attributeName}\` value is ` +
-          `\`${attributeValue}\`, but must be a number.`);
+          'MDCSliderFoundation: `' + attributeName + '` value is `' +
+          attributeValue + '`, but must be a number.');
     }
 
     return value;

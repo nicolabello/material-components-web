@@ -590,6 +590,23 @@
   }
 }
 
+/// Defines the `display` property of the content element using a given query.
+/// This is useful if the content of the dialog needs to use a custom layout,
+/// for example one that consists of a fixed header and a fixed footer, with a
+/// scrollable list area in-between, which is sized to fill available space
+/// (see b/231813016).
+/// @param {string} $display - The `display` type to set.
+/// @param {string} $query Query.
+@mixin content-display($display, $query: feature-targeting.all()) {
+  $feat-structure: feature-targeting.create-target($query, structure);
+
+  .mdc-dialog__content {
+    @include feature-targeting.targets($feat-structure) {
+      display: $display;
+    }
+  }
+}
+
 @mixin content-padding(
   $padding-top,
   $padding-right,
@@ -657,26 +674,43 @@
   }
 }
 
-@mixin max-width($max-width, $margin, $query: feature-targeting.all()) {
+@mixin max-width-with-breakpoint(
+  $above-breakpoint-max-width,
+  $below-breakpoint-max-width,
+  $max-width-breakpoint,
+  $query: feature-targeting.all()
+) {
   $feat-structure: feature-targeting.create-target($query, structure);
-  $max-size-calc-expr: calc(100vw - #{$margin * 2});
 
   .mdc-dialog__surface {
     @include feature-targeting.targets($feat-structure) {
-      @if $max-width {
-        $max-width-breakpoint: $max-width + ($margin * 2);
+      @media (max-width: $max-width-breakpoint) {
+        max-width: $below-breakpoint-max-width;
+      }
+      @media (min-width: $max-width-breakpoint) {
+        max-width: $above-breakpoint-max-width;
+      }
+    }
+  }
+}
 
-        // Fit snugly within the viewport at smaller screen sizes.
-        @media (max-width: $max-width-breakpoint) {
-          max-width: $max-size-calc-expr;
-        }
+@mixin max-width($max-width, $margin, $query: feature-targeting.all()) {
+  $feat-structure: feature-targeting.create-target($query, structure);
+  $max-width-breakpoint: $max-width + ($margin * 2);
+  // Fit snugly within the viewport at smaller screen sizes.
+  $below-breakpoint-max-width: calc(100vw - #{$margin * 2});
 
-        // Once the screen gets big enough, apply a fixed maximum width.
-        @media (min-width: $max-width-breakpoint) {
-          max-width: $max-width;
-        }
-      } @else {
-        max-width: $max-size-calc-expr;
+  @if $max-width {
+    @include max-width-with-breakpoint(
+      $max-width,
+      $below-breakpoint-max-width,
+      $max-width-breakpoint,
+      $query
+    );
+  } @else {
+    .mdc-dialog__surface {
+      @include feature-targeting.targets($feat-structure) {
+        max-width: $below-breakpoint-max-width;
       }
     }
   }
