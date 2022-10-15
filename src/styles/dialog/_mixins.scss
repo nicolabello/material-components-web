@@ -20,8 +20,8 @@
 // THE SOFTWARE.
 //
 
-// Selector '.mdc-*' should only be used in this project.
 // stylelint-disable selector-class-pattern --
+// Selector '.mdc-*' should only be used in this project.
 // Internal styling for Dialog MDC component.
 
 @use 'sass:map';
@@ -245,6 +245,21 @@
         @include dom.forced-colors-mode($exclude-ie11: true) {
           border-top-color: CanvasText;
         }
+      }
+    }
+  }
+
+  // Needed so that close affordance is aligned as if there was a title.
+  .mdc-dialog--fullscreen--titleless {
+    .mdc-dialog__close {
+      @include feature-targeting.targets($feat-structure) {
+        margin-top: 4px;
+      }
+    }
+
+    &.mdc-dialog--scrollable .mdc-dialog__close {
+      @include feature-targeting.targets($feat-structure) {
+        margin-top: 0;
       }
     }
   }
@@ -687,6 +702,16 @@
   }
 }
 
+@mixin min-height($min-height, $query: feature-targeting.all()) {
+  $feat-structure: feature-targeting.create-target($query, structure);
+
+  .mdc-dialog__surface {
+    @include feature-targeting.targets($feat-structure) {
+      min-height: $min-height;
+    }
+  }
+}
+
 @mixin max-width-with-breakpoint(
   $above-breakpoint-max-width,
   $below-breakpoint-max-width,
@@ -760,9 +785,6 @@
     // is fixed.
     .mdc-dialog__container {
       @include feature-targeting.targets($feat-structure) {
-        /* stylelint-disable */
-        // Disable stylelint here, as nesting depth > 3 is required to
-        // work around IE 11.
         @if $max-height {
           $max-height-breakpoint: $max-height + ($margin * 2);
 
@@ -771,7 +793,6 @@
             height: auto;
           }
         }
-        /* stylelint-enable*/
       }
     }
   }

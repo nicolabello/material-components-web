@@ -13,7 +13,7 @@
 @use "./image-list/mdc-image-list";
 @use "./layout-grid/mdc-layout-grid";
 @use "./line-ripple/mdc-line-ripple";
-@use "./linear-progress/mdc-linear-progress";
+@use "./linear-progress/styles" as mdc-linear-progress;
 @use "./list/mdc-list";
 @use "./menu-surface/mdc-menu-surface";
 @use "./menu/mdc-menu";

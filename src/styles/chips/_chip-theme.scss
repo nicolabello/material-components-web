@@ -214,7 +214,7 @@ $_custom-property-prefix: 'chip';
 }
 
 @mixin theme-styles($theme, $resolvers: resolvers.$material) {
-  @include theme.validate-theme-keys($_light-theme, $theme);
+  @include theme.validate-theme-styles($_light-theme, $theme);
   $theme: keys.create-theme-properties(
     $theme,
     $prefix: $_custom-property-prefix
@@ -1549,5 +1549,11 @@ $_custom-property-prefix: 'chip';
 @mixin _is-unselected() {
   &:not(.mdc-evolution-chip--selected) {
     @content;
+  }
+}
+
+@mixin button-cursor($cursor) {
+  .mdc-evolution-chip__action {
+    cursor: $cursor;
   }
 }

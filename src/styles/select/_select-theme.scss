@@ -47,7 +47,6 @@
 @use './../shape/mixins' as shape-mixins;
 @use './../theme/custom-properties';
 @use './../theme/gss';
-@use './../theme/mixins' as theme-mixins;
 @use './../theme/state';
 @use './../theme/theme';
 @use './../theme/variables' as theme-variables;
@@ -293,7 +292,8 @@ $_light-theme: (
 );
 
 @mixin theme-styles($theme, $resolvers: resolvers.$material) {
-  @include theme.validate-theme-keys($_light-theme, $theme);
+  // TODO(b/251881053): Replace with `validate-theme`.
+  @include theme.validate-theme-styles($_light-theme, $theme);
 
   @include container-fill-color(
     (
@@ -1674,7 +1674,7 @@ $_light-theme: (
   @if $color {
     .mdc-select__selected-text {
       @include feature-targeting.targets($feat-color) {
-        @include theme-mixins.property(color, $color);
+        @include theme.property(color, $color);
       }
     }
   }
@@ -1686,7 +1686,7 @@ $_light-theme: (
   @if $color {
     .mdc-select__anchor {
       @include feature-targeting.targets($feat-color) {
-        @include theme-mixins.property(background-color, $color);
+        @include theme.property(background-color, $color);
       }
     }
   }
@@ -1760,7 +1760,7 @@ $_light-theme: (
   @if $color {
     @include feature-targeting.targets($feat-color) {
       .mdc-select__dropdown-icon {
-        @include theme-mixins.property(fill, $color);
+        @include theme.property(fill, $color);
       }
     }
   }

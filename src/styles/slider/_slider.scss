@@ -26,7 +26,6 @@
 @use 'sass:math';
 @use './../animation/animation';
 @use './../dom/mixins' as dom-mixins;
-@use './../elevation/mixins' as elevation-mixins;
 @use './../feature-targeting/feature-targeting';
 @use './../ripple/ripple';
 @use './../ripple/ripple-theme';
@@ -55,7 +54,6 @@ $_track-inactive-height: 4px;
 // ripple-related styles from the other slider styles.
 // It is recommended that most users use `core-styles` instead.
 @mixin without-ripple($query: feature-targeting.all()) {
-  $feat-color: feature-targeting.create-target($query, color);
   $feat-structure: feature-targeting.create-target($query, structure);
 
   @include static-styles($query: $query);
@@ -65,19 +63,6 @@ $_track-inactive-height: 4px;
       slider-theme.$light-theme,
       $query: $query
     );
-
-    .mdc-slider__thumb {
-      @include feature-targeting.targets($feat-structure) {
-        height: $_thumb-ripple-size;
-        width: $_thumb-ripple-size;
-      }
-    }
-  }
-
-  .mdc-slider--disabled {
-    @include feature-targeting.targets($feat-color) {
-      opacity: 0.38;
-    }
   }
 }
 
@@ -178,7 +163,6 @@ $_track-inactive-height: 4px;
       // transform: scale(...) to the inner `track--active_fill` element,
       // such that the track grows/shrinks as needed, but the border-radius
       // is not affected by the scaling.
-      border-radius: 3px;
       overflow: hidden;
       top: math.div($_track-inactive-height - $_track-active-height, 2);
     }
@@ -212,7 +196,6 @@ $_track-inactive-height: 4px;
     }
 
     @include feature-targeting.targets($feat-structure) {
-      border-radius: 2px;
       left: 0;
       top: 0;
     }
@@ -233,6 +216,8 @@ $_track-inactive-height: 4px;
       outline: none;
       position: absolute;
       user-select: none;
+      height: $_thumb-ripple-size;
+      width: $_thumb-ripple-size;
     }
 
     &--top {
@@ -253,20 +238,13 @@ $_track-inactive-height: 4px;
   }
 
   .mdc-slider__thumb-knob {
-    @include elevation-mixins.elevation($z-value: 1, $query: $query);
-
     @include feature-targeting.targets($feat-structure) {
-      // Use border rather than background-color to fill thumb, for HCM.
-      border: math.div($_thumb-size, 2) solid;
-      border-radius: 50%;
       box-sizing: border-box;
-      height: $_thumb-size;
       @include rtl.ignore-next-line();
       left: 50%;
       position: absolute;
       top: 50%;
       transform: translate(-50%, -50%);
-      width: $_thumb-size;
     }
   }
 }
@@ -285,13 +263,6 @@ $_track-inactive-height: 4px;
       padding: 0 1px;
       position: absolute;
       width: 100%;
-    }
-  }
-
-  .mdc-slider__tick-mark--active,
-  .mdc-slider__tick-mark--inactive {
-    @include feature-targeting.targets($feat-structure) {
-      border-radius: 50%;
     }
   }
 }
@@ -400,10 +371,6 @@ $_track-inactive-height: 4px;
         transition: none;
       }
     }
-  }
-
-  .mdc-slider__value-indicator-text {
-    @include typography.typography(subtitle2, $query);
   }
 }
 

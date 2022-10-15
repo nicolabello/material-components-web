@@ -30,6 +30,7 @@
 @use './../theme/keys';
 @use './../theme/theme';
 @use './../theme/theme-color';
+@use './../dom/dom';
 
 $color: primary !default;
 $track-color: transparent !default;
@@ -69,7 +70,7 @@ $light-theme: (
 }
 
 @mixin theme-styles($theme) {
-  @include theme.validate-theme-keys($light-theme, $theme);
+  @include theme.validate-theme-styles($light-theme, $theme);
 
   $theme: keys.create-theme-properties(
     $theme,
@@ -124,6 +125,10 @@ $light-theme: (
   .mdc-circular-progress__indeterminate-circle-graphic {
     @include feature-targeting.targets($feat-color) {
       @include theme.property(stroke, $color);
+
+      @include dom.forced-colors-mode {
+        @include theme.property(stroke, CanvasText);
+      }
     }
   }
 }
@@ -158,6 +163,10 @@ $light-theme: (
       .mdc-circular-progress__indeterminate-circle-graphic {
       @include feature-targeting.targets($feat-color) {
         @include theme.property(stroke, nth($colors, $i));
+
+        @include dom.forced-colors-mode {
+          @include theme.property(stroke, CanvasText);
+        }
       }
     }
   }

@@ -130,15 +130,15 @@ $ripple-target: variables.$ripple-target;
     }
   }
 
+  // stylelint-disable selector-max-type --
   // Override anchor tag styles for the use-case of a list being used for navigation
-  // stylelint-disable selector-max-type,selector-no-qualifying-type
   a.mdc-list-item {
     @include feature-targeting.targets($feat-structure) {
       color: inherit;
       text-decoration: none;
     }
   }
-  // stylelint-enable selector-max-type,selector-no-qualifying-type
+  // stylelint-enable selector-max-type
 
   .mdc-list-item__start {
     @include feature-targeting.targets($feat-structure) {
@@ -638,7 +638,7 @@ $ripple-target: variables.$ripple-target;
   &.mdc-list-item--with-one-line,
   &.mdc-list-item--with-two-lines,
   &.mdc-list-item--with-three-lines {
-    height: $height;
+    @include theme.property(height, $height);
   }
 }
 
@@ -795,8 +795,8 @@ $ripple-target: variables.$ripple-target;
   $feat-structure: feature-targeting.create-target($query, structure);
   @include feature-targeting.targets($feat-structure) {
     .mdc-list-item__start {
-      width: $width;
-      height: $height;
+      @include theme.property(width, $width);
+      @include theme.property(height, $height);
     }
   }
 }
@@ -805,14 +805,14 @@ $ripple-target: variables.$ripple-target;
   $feat-structure: feature-targeting.create-target($query, structure);
   @include feature-targeting.targets($feat-structure) {
     .mdc-list-item__end {
-      width: $width;
-      height: $height;
+      @include theme.property(width, $width);
+      @include theme.property(height, $height);
     }
   }
 }
 
 @mixin list-item-selected-container-color($color) {
-  &.mdc-list-item--selected {
+  &.mdc-list-item.mdc-list-item--selected {
     @include theme.property(background-color, $color);
   }
 }
@@ -933,7 +933,7 @@ $ripple-target: variables.$ripple-target;
     .mdc-list-item__content,
     .mdc-list-item__end {
       @include feature-targeting.targets($feat-color) {
-        opacity: $opacity;
+        @include theme.property(opacity, $opacity);
       }
     }
   }
